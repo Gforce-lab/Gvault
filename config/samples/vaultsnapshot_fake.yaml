@@ -1,0 +1,12 @@
+apiVersion: vault.gvault.dev/v1alpha1
+kind: VaultSnapshot
+metadata:
+  name: llama8b-fake-v1
+  namespace: inference
+spec:
+  provider: fake
+  clusterId: dev-gpu-cluster
+  retentionPolicy: Retain
+  source:
+    podName: llama-vllm-0
+    containerName: main

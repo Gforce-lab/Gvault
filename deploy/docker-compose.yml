@@ -1,0 +1,21 @@
+# API + PostgreSQL only. No real GPU, no NVIDIA Snapshot operator.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gvault-postgres
+    environment:
+      POSTGRES_USER: vault
+      POSTGRES_PASSWORD: vault
+      POSTGRES_DB: gvault
+    ports:
+      - "5433:5432"
+    volumes:
+      - vault_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vault -d gvault"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  vault_pg_data:

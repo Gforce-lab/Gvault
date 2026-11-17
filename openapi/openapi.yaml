@@ -1,0 +1,171 @@
+openapi: 3.1.0
+info:
+  title: gvault API
+  version: 0.1.0
+  description: |
+    gvault HTTP API. Default capture/restore use FakeProvider only.
+    READY/SUCCEEDED means simulated application state — not a physical GPU checkpoint.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: Process health
+      responses:
+        "200":
+          description: OK
+  /readyz:
+    get:
+      summary: Dependencies ready
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
+  /api/v1/snapshots:
+    get:
+      summary: List snapshots
+      parameters:
+        - in: query
+          name: clusterId
+          schema: { type: string }
+        - in: query
+          name: namespace
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paginated list
+    post:
+      summary: Submit capture operation
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureRequest"
+      responses:
+        "202":
+          description: Accepted after durable persistence
+  /api/v1/snapshots/{id}:
+    get:
+      summary: Get snapshot
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Catalog entry
+    delete:
+      summary: Submit guarded deletion
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "202":
+          description: Deletion accepted
+  /api/v1/snapshots/{id}/compatibility:
+    post:
+      summary: Preflight compatibility evaluation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompatibilityRequest"
+      responses:
+        "200":
+          description: Eligibility result
+  /api/v1/snapshots/{id}/restore:
+    post:
+      summary: Submit restore operation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreRequest"
+      responses:
+        "202":
+          description: Accepted
+  /api/v1/operations/{id}:
+    get:
+      summary: Get async operation status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Operation
+  /api/v1/providers:
+    get:
+      summary: List providers
+      responses:
+        "200":
+          description: Providers
+components:
+  schemas:
+    CaptureRequest:
+      type: object
+      required: [name, clusterId, namespace, source]
+      properties:
+        name: { type: string }
+        clusterId: { type: string }
+        namespace: { type: string }
+        provider: { type: string, default: fake }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        source:
+          type: object
+          required: [podName, containerName]
+          properties:
+            podName: { type: string }
+            containerName: { type: string }
+    CompatibilityRequest:
+      type: object
+      required: [targetClusterId]
+      properties:
+        targetClusterId: { type: string }
+        targetNodeName: { type: string }
+        gpuProduct: { type: string }
+        driverVersion: { type: string }
+        architecture: { type: string }
+        imageDigest: { type: string }
+    RestoreRequest:
+      type: object
+      required: [targetClusterId, namespace, podName]
+      properties:
+        targetClusterId: { type: string }
+        namespace: { type: string }
+        podName: { type: string }
+        targetNodeName: { type: string }
+        gpuProduct: { type: string }
+        driverVersion: { type: string }
+        architecture: { type: string }
+        imageDigest: { type: string }

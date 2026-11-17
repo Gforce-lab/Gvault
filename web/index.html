@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gvault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand-block">
+      <p class="brand">gvault</p>
+      <p class="tagline">GPU snapshot registry &amp; lifecycle control · <span class="beta">0.1.0-beta</span></p>
+    </div>
+    <div class="status-pill" id="simBanner">Loading…</div>
+  </header>
+
+  <main>
+    <section class="hero-flow">
+      <h1>See the capture → restore flow</h1>
+      <p class="lede">Drive the FakeProvider path end-to-end. READY means simulated state — never a physical GPU checkpoint.</p>
+      <ol class="steps" id="flowSteps">
+        <li data-step="1" class="active">Capture</li>
+        <li data-step="2">Poll operation</li>
+        <li data-step="3">Compatibility</li>
+        <li data-step="4">Restore</li>
+      </ol>
+    </section>
+
+    <section class="compose">
+      <div class="panel">
+        <h2>Capture snapshot</h2>
+        <form id="captureForm">
+          <label>Name <input name="name" value="llama8b-demo" required /></label>
+          <label>Cluster <input name="clusterId" value="dev-gpu-cluster" required /></label>
+          <label>Namespace <input name="namespace" value="inference" required /></label>
+          <label>Pod <input name="podName" value="llama-vllm-0" required /></label>
+          <label>Container <input name="containerName" value="main" required /></label>
+          <button type="submit">Submit capture</button>
+        </form>
+        <pre id="captureOut" class="out"></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Catalog</h2>
+        <div class="toolbar">
+          <button type="button" id="refreshBtn">Refresh</button>
+          <button type="button" id="overviewBtn">Overview</button>
+        </div>
+        <div id="catalog" class="catalog"></div>
+      </div>
+    </section>
+
+    <section class="compose">
+      <div class="panel">
+        <h2>Compatibility preflight</h2>
+        <form id="compatForm">
+          <label>Snapshot ID <input name="snapshotId" id="compatSnap" required /></label>
+          <label>Target cluster <input name="targetClusterId" value="dev-gpu-cluster" required /></label>
+          <label>GPU product <input name="gpuProduct" value="NVIDIA-Fake-A100-80GB" /></label>
+          <label>Driver <input name="driverVersion" value="550.00.fake" /></label>
+          <label>Arch <input name="architecture" value="amd64" /></label>
+          <label>Image digest <input name="imageDigest" value="sha256:fake-image-digest" /></label>
+          <button type="submit">Check</button>
+        </form>
+        <pre id="compatOut" class="out"></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Restore</h2>
+        <form id="restoreForm">
+          <label>Snapshot ID <input name="snapshotId" id="restoreSnap" required /></label>
+          <label>Target cluster <input name="targetClusterId" value="dev-gpu-cluster" required /></label>
+          <label>Namespace <input name="namespace" value="inference" required /></label>
+          <label>Pod name <input name="podName" value="llama-vllm-restored-1" required /></label>
+          <label>Node (optional) <input name="targetNodeName" value="fake-node-b" /></label>
+          <button type="submit">Submit restore</button>
+        </form>
+        <pre id="restoreOut" class="out"></pre>
+      </div>
+    </section>
+
+    <section class="panel wide">
+      <h2>Recent operations</h2>
+      <div id="ops" class="catalog"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>gvault · FakeProvider by default · NVIDIA Snapshot pin documented in docs/compatibility.md</span>
+  </footer>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

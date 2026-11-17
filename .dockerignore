@@ -1,0 +1,10 @@
+bin/
+.env
+.git/
+.idea/
+.vscode/
+*.test
+*.out
+coverage.out
+agent-transcripts/
+**/.DS_Store

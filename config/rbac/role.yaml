@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gvault-controller
+rules:
+  - apiGroups: ["vault.gvault.dev"]
+    resources: ["vaultsnapshots", "vaultrestores"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["vault.gvault.dev"]
+    resources: ["vaultsnapshots/status", "vaultrestores/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["vault.gvault.dev"]
+    resources: ["vaultsnapshots/finalizers", "vaultrestores/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["nvidia.com"]
+    resources: ["podsnapshots", "snapshotjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["nvidia.com"]
+    resources: ["podsnapshotcontents"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]

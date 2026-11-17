@@ -1,0 +1,17 @@
+replicaCount: 1
+image:
+  repository: gvault/gvault-api
+  tag: "0.1.0-beta.1"
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8080
+env:
+  PROVIDER: fake
+  DEV_AUTH_BYPASS: "false"
+  ENABLE_NVIDIA_PROVIDER: "false"
+  PRODUCT_NAME: gvault
+postgres:
+  # Point at an external Postgres in real deployments.
+  url: ""
+resources: {}
