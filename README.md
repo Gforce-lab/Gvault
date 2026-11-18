@@ -1,97 +1,49 @@
 # gvault
 
-**Version:** `0.1.0-beta.1` · **Channel:** beta  
-See [CHANGELOG.md](CHANGELOG.md) and [docs/release-notes-0.1.0-beta.md](docs/release-notes-0.1.0-beta.md).
+[![ci](https://github.com/Gforce-lab/gvault/actions/workflows/ci.yml/badge.svg)](https://github.com/Gforce-lab/gvault/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0--beta.1-orange.svg)](VERSION)
 
 **gvault** is a Kubernetes-native registry and lifecycle control plane for reusable GPU execution snapshots.
 
-It sits **above** checkpoint engines (starting with NVIDIA Snapshot) and owns the platform problems those engines do not: discovery, versioning, compatibility preflight, async operations, retention safety, audit, and controlled restore orchestration.
+It sits **above** checkpoint engines (starting with [NVIDIA Snapshot](https://github.com/ai-dynamo/snapshot)) and owns the platform problems those engines do not: discovery, versioning, compatibility preflight, async operations, retention safety, audit, and controlled restore orchestration.
 
-> Default local path uses **FakeProvider**. `READY` / `SUCCEEDED` are **simulated** so you can learn and demo the product without a GPU. They are not physical CUDA checkpoints.
+> **Beta (`0.1.0-beta.1`)** — default local path uses **FakeProvider**. `READY` / `SUCCEEDED` are **simulated** so you can demo without a GPU. They are not physical CUDA checkpoints.
+
+**Repo:** https://github.com/Gforce-lab/gvault
 
 ---
 
-## Why this product matters
+## Why gvault exists
 
-### The expensive problem
+LLM / inference Pods often spend a long time before they can serve traffic (weights, CUDA init, kernel warmup). Checkpoint systems can capture that warmed state — but platform teams still need:
 
-Modern LLM / inference Pods often spend a long time before they can serve traffic:
+- which snapshot matches this model, image digest, driver, and GPU product?
+- is node B eligible *before* creating a restore Pod?
+- who requested capture/restore, and what failed?
+- how do we retain, promote, or safely delete versions?
 
-- pulling and loading model weights
-- initializing CUDA contexts
-- warming kernels / CUDA graphs
-- reaching a stable, request-ready state
-
-On GPU clusters, that cold-start cost shows up as:
-
-- slower autoscaling
-- wasted GPU idle time while replicas “boot”
-- brittle manual runbooks for checkpoint/restore
-- hard-to-answer questions: *which snapshot is safe to restore on this node?*
-
-Checkpoint systems (for example NVIDIA Snapshot) can capture and restore an initialized GPU process. That is necessary — but not enough for a platform team.
-
-### The missing control plane
-
-Operators still need answers like:
-
-- Which snapshot matches this model revision, image digest, driver, and GPU product?
-- Is destination node B eligible *before* we create a restore Pod?
-- Who requested capture/restore, and what failed?
-- Can we retain, promote, or safely delete a version without orphaning artifacts?
-- How do we measure cold start vs restored start honestly?
-
-**gvault’s job is that control plane.**  
-The external provider owns checkpoint mechanics. gvault owns **inventory, policy, compatibility, orchestration, and observability**.
-
-That separation is the product:
+**gvault is that control plane.** The provider owns checkpoint mechanics; gvault owns inventory, policy, compatibility, orchestration, and observability.
 
 | Layer | Owns | Does not own |
 |---|---|---|
 | **gvault** | Catalog, compatibility preflight, async ops, retention/hold, audit, restore intent | CUDA serialization, CRIU, privileged node agents |
-| **NVIDIA Snapshot (pinned v0.3.0)** | `PodSnapshot` / restore-pod contract, RWX artifact bytes | Global naming, multi-provider policy, product registry UX |
-
-### Why it is a strong project for work
-
-This is a good implementation target for platform / MLOps / Kubernetes work because it forces real engineering skills that show up in production systems:
-
-1. **Clear system boundary** — integrate with an upstream, don’t reinvent CUDA checkpointing  
-2. **Async APIs done correctly** — durable operations, `202`, idempotency, status polling  
-3. **Fail-closed safety** — reject incompatible restores with structured reasons  
-4. **Provider interface** — FakeProvider for CI; NVIDIA adapter behind a pin + feature flag  
-5. **Kubernetes-native direction** — CRDs (`VaultSnapshot` / `VaultRestore`) + reconciler path  
-6. **Honest demos** — simulated path labeled clearly; real GPU path documented and SKIPPED without hardware  
-
-It is **not** a generic CRUD app. It is a credible slice of an inference platform: warm capacity, faster scale-out, and safer restore governance.
-
-### What success looks like (product sense)
-
-A platform engineer can:
-
-1. Capture an initialized workload once  
-2. Find the right snapshot by model / runtime / GPU identity  
-3. Preflight destination compatibility  
-4. Restore on a compatible node  
-5. Track status, failures, and retention without touching raw checkpoint files  
-
-Locally, you practice that full loop with FakeProvider + UI. On a real GPU cluster, the same contracts map onto NVIDIA Snapshot.
+| **NVIDIA Snapshot (v0.3.0 pin)** | `PodSnapshot` / restore-pod contract, RWX artifact bytes | Global naming, multi-provider policy, product UX |
 
 ---
 
-## Quick start (understand the flow in minutes)
+## Quick start
 
 ```bash
+git clone https://github.com/Gforce-lab/gvault.git
+cd gvault
 cp .env.example .env
 make docker-up          # Postgres on localhost:5433
 make test && make build
-make run-api            # API + UI
+make run-api            # API + UI → http://localhost:8080
 ```
 
-Open **http://localhost:8080** and walk:
-
-**Capture → poll operation → compatibility → restore**
-
-CLI:
+Walk the flow in the UI: **Capture → poll operation → compatibility → restore**
 
 ```bash
 ./bin/gvaultctl overview
@@ -99,11 +51,11 @@ CLI:
 ./bin/gvaultctl snapshot create llama8b-demo dev-gpu-cluster inference llama-vllm-0 main
 ```
 
-More detail: [examples/fake-provider/README.md](examples/fake-provider/README.md)
+More: [examples/fake-provider/README.md](examples/fake-provider/README.md)
 
 ---
 
-## Architecture (short)
+## Architecture
 
 ```text
 UI / gvaultctl / curl
@@ -121,36 +73,45 @@ Checkpoint **bytes** never pass through the HTTP API. gvault stores opaque provi
 
 ---
 
-## Status
-
-See [docs/implementation-status.md](docs/implementation-status.md) and [docs/decisions.md](docs/decisions.md).
+## Status (0.1.0-beta.1)
 
 | Area | Status |
 |---|---|
-| FakeProvider end-to-end API + UI | Implemented |
-| Compatibility engine (fail-closed) | Implemented |
-| Vault CRDs + local reconciler demo | Implemented |
-| NVIDIA v0.3.0 pin + dry-run contracts | Implemented (live kube path gated) |
-| Real GPU A→B restore | Requires cluster; tests SKIPPED without hardware |
+| FakeProvider end-to-end API + UI | Done |
+| Compatibility engine (fail-closed) | Done |
+| Vault CRDs + local reconciler demo | Done |
+| NVIDIA v0.3.0 pin + dry-run contracts | Done (live kube path gated) |
+| Real GPU A→B restore | Needs cluster; tests SKIPPED without hardware |
+
+See [docs/implementation-status.md](docs/implementation-status.md), [CHANGELOG.md](CHANGELOG.md), and [docs/release-notes-0.1.0-beta.md](docs/release-notes-0.1.0-beta.md).
 
 ---
 
-## CI/CD
+## CI/CD & Dependabot
 
-GitHub Actions runs on every PR/push: unit + race tests, Postgres integration, binary build, and Docker image build (no push). Tag `v*` cuts a release + GHCR image.
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `ci.yml` | push / PR | tidy, vet, race tests, Postgres integration, binaries, Docker build |
+| `release.yml` | tag `v*` | release artifacts + GHCR image |
+| `dependabot-auto-merge.yml` | Dependabot PRs | enable auto-merge (squash) after CI is green |
+| `dependabot.yml` | weekly | Go modules + GitHub Actions updates |
 
 Details: [docs/ci-cd.md](docs/ci-cd.md)
 
+Dependabot PRs are labeled `dependencies` and set to **auto-merge** once required checks pass. The repository must have **Allow auto-merge** enabled (Settings → General → Pull Requests).
+
+---
+
 ## Docs
 
-- [Why / architecture](docs/architecture.md)
+- [Architecture](docs/architecture.md)
 - [Compatibility + NVIDIA pin](docs/compatibility.md)
 - [GPU setup](docs/gpu-setup.md)
 - [CI/CD](docs/ci-cd.md)
-- [Full engineering plan](docs/GPU_Snapshot_Vault_Project_Plan.md)
+- [Engineering plan](docs/GPU_Snapshot_Vault_Project_Plan.md)
 
 ---
 
 ## License
 
-Apache-2.0
+Apache-2.0 — see [LICENSE](LICENSE).

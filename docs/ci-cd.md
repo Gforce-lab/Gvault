@@ -6,7 +6,14 @@
 |---|---|---|
 | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | push / PR to `main`, `master`, `develop` | tidy check, vet, unit + race, integration (Postgres service), build binaries, Docker build (no push) |
 | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | tag `v*` | cross-compile artifacts, GitHub Release, push image to `ghcr.io/<org>/gvault/gvault-api` |
-| [`.github/dependabot.yml`](../.github/dependabot.yml) | weekly | Go modules + Actions updates |
+| [`.github/workflows/dependabot-auto-merge.yml`](../.github/workflows/dependabot-auto-merge.yml) | Dependabot PRs | `gh pr merge --auto --squash` after checks |
+| [`.github/dependabot.yml`](../.github/dependabot.yml) | weekly (Monday) | Go modules + Actions updates (grouped) |
+
+### Dependabot auto-merge
+
+1. Enable **Settings → General → Pull Requests → Allow auto-merge** on `Gforce-lab/gvault`.
+2. (Recommended) Protect `main` with required status check `test` from `ci.yml`.
+3. Dependabot opens PRs labeled `dependencies`; the auto-merge workflow queues a squash merge when CI is green.
 
 ## Local parity
 
