@@ -48,7 +48,7 @@ jobs:
             FakeProvider READY is simulated — not a physical GPU checkpoint.
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
