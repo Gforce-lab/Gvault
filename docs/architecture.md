@@ -1,4 +1,4 @@
-# Architecture — gvault
+# Architecture — Gvault
 
 ```text
 UI / gvaultctl / curl

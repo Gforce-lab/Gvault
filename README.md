@@ -1,20 +1,20 @@
-# gvault
+# Gvault
 
-[![ci](https://github.com/Gforce-lab/gvault/actions/workflows/ci.yml/badge.svg)](https://github.com/Gforce-lab/gvault/actions/workflows/ci.yml)
+[![ci](https://github.com/Gforce-lab/Gvault/actions/workflows/ci.yml/badge.svg)](https://github.com/Gforce-lab/Gvault/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0--beta.1-orange.svg)](VERSION)
 
-**gvault** is a Kubernetes-native registry and lifecycle control plane for reusable GPU execution snapshots.
+**Gvault** is a Kubernetes-native registry and lifecycle control plane for reusable GPU execution snapshots.
 
 It sits **above** checkpoint engines (starting with [NVIDIA Snapshot](https://github.com/ai-dynamo/snapshot)) and owns the platform problems those engines do not: discovery, versioning, compatibility preflight, async operations, retention safety, audit, and controlled restore orchestration.
 
 > **Beta (`0.1.0-beta.1`)** — default local path uses **FakeProvider**. `READY` / `SUCCEEDED` are **simulated** so you can demo without a GPU. They are not physical CUDA checkpoints.
 
-**Repo:** https://github.com/Gforce-lab/gvault
+**Repo:** https://github.com/Gforce-lab/Gvault
 
 ---
 
-## Why gvault exists
+## Why Gvault exists
 
 LLM / inference Pods often spend a long time before they can serve traffic (weights, CUDA init, kernel warmup). Checkpoint systems can capture that warmed state — but platform teams still need:
 
@@ -23,11 +23,11 @@ LLM / inference Pods often spend a long time before they can serve traffic (weig
 - who requested capture/restore, and what failed?
 - how do we retain, promote, or safely delete versions?
 
-**gvault is that control plane.** The provider owns checkpoint mechanics; gvault owns inventory, policy, compatibility, orchestration, and observability.
+**Gvault is that control plane.** The provider owns checkpoint mechanics; Gvault owns inventory, policy, compatibility, orchestration, and observability.
 
 | Layer | Owns | Does not own |
 |---|---|---|
-| **gvault** | Catalog, compatibility preflight, async ops, retention/hold, audit, restore intent | CUDA serialization, CRIU, privileged node agents |
+| **Gvault** | Catalog, compatibility preflight, async ops, retention/hold, audit, restore intent | CUDA serialization, CRIU, privileged node agents |
 | **NVIDIA Snapshot (v0.3.0 pin)** | `PodSnapshot` / restore-pod contract, RWX artifact bytes | Global naming, multi-provider policy, product UX |
 
 ---
@@ -35,8 +35,8 @@ LLM / inference Pods often spend a long time before they can serve traffic (weig
 ## Quick start
 
 ```bash
-git clone https://github.com/Gforce-lab/gvault.git
-cd gvault
+git clone https://github.com/Gforce-lab/Gvault.git
+cd Gvault
 cp .env.example .env
 make docker-up          # Postgres on localhost:5433
 make test && make build
@@ -69,7 +69,7 @@ UI / gvaultctl / curl
    └── nvidia-snapshot (pinned v0.3.0, fail-closed without live cluster)
 ```
 
-Checkpoint **bytes** never pass through the HTTP API. gvault stores opaque provider references only.
+Checkpoint **bytes** never pass through the HTTP API. Gvault stores opaque provider references only.
 
 ---
 
@@ -98,7 +98,7 @@ See [docs/implementation-status.md](docs/implementation-status.md), [CHANGELOG.m
 
 Details: [docs/ci-cd.md](docs/ci-cd.md)
 
-Dependabot PRs are labeled `dependencies` and set to **auto-merge** once required checks pass. The repository must have **Allow auto-merge** enabled (Settings → General → Pull Requests).
+Dependabot PRs are labeled `dependencies` and set to **auto-merge** once required checks pass. Enable **Allow auto-merge** under repo Settings → General → Pull Requests.
 
 ---
 

@@ -1,13 +1,13 @@
-# Architectural and delivery decisions — gvault
+# Architectural and delivery decisions — Gvault
 
 ---
 
-## ADR-000 — Product name gvault
+## ADR-000 — Product name Gvault
 
 - **Date:** 2026-11-17
 - **Status:** Accepted
-- **Decision:** Project name is **gvault**. Go module is `github.com/gvault/gvault`. Binaries are `gvault-api`, `gvault-controller`, `gvaultctl`.
-- **Consequences:** README, UI, CLI, CRD group `vault.gvault.dev`, DB name `gvault`, and docs use gvault.
+- **Decision:** Project name is **Gvault**. Go module is `github.com/gvault/gvault`. Binaries are `gvault-api`, `gvault-controller`, `gvaultctl`.
+- **Consequences:** README, UI, and docs use **Gvault**. Go module/imports stay `github.com/gvault/gvault`; binaries stay `gvault-api` / `gvaultctl`; CRD group `vault.gvault.dev`; DB name `gvault`.
 
 ---
 

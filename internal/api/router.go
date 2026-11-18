@@ -63,7 +63,7 @@ func mountUI(r *gin.Engine, uiDir string) {
 	if _, err := os.Stat(index); err != nil {
 		r.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"product": "gvault",
+				"product": "Gvault",
 				"message": "UI not found; API is available under /api/v1",
 			})
 		})

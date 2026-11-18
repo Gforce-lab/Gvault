@@ -9,7 +9,7 @@ var (
 
 func Info() map[string]string {
 	return map[string]string{
-		"product":   "gvault",
+		"product":   "Gvault",
 		"version":   Version,
 		"commit":    Commit,
 		"buildDate": BuildDate,

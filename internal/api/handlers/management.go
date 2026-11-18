@@ -103,7 +103,7 @@ func (a *API) Overview(c *gin.Context) {
 		a.Metrics.SetReady(int64(ready))
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"product":          "gvault",
+		"product": "Gvault",
 		"version":          version.Version,
 		"channel":          "beta",
 		"provider":         a.Provider.Name(),

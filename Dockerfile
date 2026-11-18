@@ -1,4 +1,4 @@
-# gvault API image (beta)
+# Gvault API image (beta)
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache git ca-certificates
@@ -21,7 +21,7 @@ ENV HTTP_ADDR=:8080 \
     MIGRATIONS_DIR=/app/db/migrations \
     UI_DIR=/app/web \
     PROVIDER=fake \
-    PRODUCT_NAME=gvault
+    PRODUCT_NAME=Gvault
 EXPOSE 8080
 USER nobody
 ENTRYPOINT ["/usr/local/bin/gvault-api"]

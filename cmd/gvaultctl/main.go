@@ -85,7 +85,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `gvaultctl — gvault CLI (0.1.0-beta)
+	fmt.Fprintf(os.Stderr, `gvaultctl — Gvault CLI (0.1.0-beta)
 
   gvaultctl version
   gvaultctl overview

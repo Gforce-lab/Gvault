@@ -1,6 +1,6 @@
 apiVersion: v2
 name: gvault
-description: gvault — GPU snapshot registry and lifecycle control plane (beta)
+description: Gvault — GPU snapshot registry and lifecycle control plane (beta)
 type: application
 version: 0.1.0-beta.1
 appVersion: "0.1.0-beta.1"

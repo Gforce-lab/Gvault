@@ -2,7 +2,7 @@
 
 ## Product
 
-**gvault** — GPU snapshot registry and lifecycle control plane.
+**Gvault** — GPU snapshot registry and lifecycle control plane.
 
 ## Active local path
 

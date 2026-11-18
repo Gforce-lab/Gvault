@@ -10,7 +10,7 @@ env:
   PROVIDER: fake
   DEV_AUTH_BYPASS: "false"
   ENABLE_NVIDIA_PROVIDER: "false"
-  PRODUCT_NAME: gvault
+  PRODUCT_NAME: Gvault
 postgres:
   # Point at an external Postgres in real deployments.
   url: ""

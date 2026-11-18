@@ -36,7 +36,7 @@ func Load() (Config, error) {
 		PollInterval:         time.Duration(getenvInt("POLL_INTERVAL_MS", 100)) * time.Millisecond,
 		EnableNVIDIAProvider: getenvBool("ENABLE_NVIDIA_PROVIDER", false),
 		UIDir:                getenv("UI_DIR", "web"),
-		ProductName:          getenv("PRODUCT_NAME", "gvault"),
+		ProductName:          getenv("PRODUCT_NAME", "Gvault"),
 	}
 	switch cfg.Provider {
 	case "fake", "nvidia-snapshot":

@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: gvault API
+  title: Gvault API
   version: 0.1.0
   description: |
-    gvault HTTP API. Default capture/restore use FakeProvider only.
+    Gvault HTTP API. Default capture/restore use FakeProvider only.
     READY/SUCCEEDED means simulated application state — not a physical GPU checkpoint.
 servers:
   - url: http://localhost:8080

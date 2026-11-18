@@ -1,4 +1,4 @@
-# gvault FakeProvider demo
+# Gvault FakeProvider demo
 
 This path uses **simulated** capture/restore. It does **not** create real GPU checkpoints.
 

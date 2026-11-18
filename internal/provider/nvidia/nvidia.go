@@ -118,7 +118,7 @@ func BuildPodSnapshotManifest(namespace, name, podName, podUID, containerName st
 			"name":      name,
 			"namespace": namespace,
 			"labels": map[string]string{
-				"app.kubernetes.io/managed-by": "gvault",
+				"app.kubernetes.io/managed-by": "Gvault",
 				"gvault.dev/pinned-release":    PinnedRelease,
 			},
 		},
@@ -138,7 +138,7 @@ func BuildRestorePodContract(podSnapshotName, namespace, podName, containerName 
 			RestoreFromAnnotation: podSnapshotName,
 		},
 		"labels": map[string]string{
-			"app.kubernetes.io/managed-by": "gvault",
+			"app.kubernetes.io/managed-by": "Gvault",
 		},
 	}
 	spec := map[string]any{

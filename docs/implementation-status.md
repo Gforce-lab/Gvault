@@ -1,9 +1,9 @@
-# Implementation status — gvault
+# Implementation status — Gvault
 
 Last updated: 2026-11-17  
 **Release:** [0.1.0-beta.1](release-notes-0.1.0-beta.md)
 
-Project name: **gvault** · Module: `github.com/gvault/gvault` · Binaries: `gvault-api`, `gvault-controller`, `gvaultctl`
+Project name: **Gvault** · Module: `github.com/gvault/gvault` · Binaries: `gvault-api`, `gvault-controller`, `gvaultctl`
 
 ## Milestone checklist (beta complete)
 

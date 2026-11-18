@@ -2,7 +2,7 @@
 
 ## 0.1.0-beta.1 — 2026-11-17
 
-First public **beta** of **gvault**.
+First public **beta** of **Gvault**.
 
 ### Included (all plan milestones, beta-complete)
 

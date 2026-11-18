@@ -42,7 +42,7 @@ jobs:
           generate_release_notes: true
           files: dist/*
           body: |
-            gvault ${{ github.ref_name }}
+            Gvault ${{ github.ref_name }}
 
             See CHANGELOG.md and docs/release-notes-0.1.0-beta.md for beta scope and limitations.
             FakeProvider READY is simulated — not a physical GPU checkpoint.

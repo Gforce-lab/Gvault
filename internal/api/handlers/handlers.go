@@ -28,7 +28,7 @@ type API struct {
 }
 
 func (a *API) Healthz(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "product": "gvault", "version": version.Version})
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "product": "Gvault", "version": version.Version})
 }
 
 func (a *API) Version(c *gin.Context) {
@@ -165,7 +165,7 @@ func (a *API) ListProviders(c *gin.Context) {
 		Name: a.Provider.Name(), Healthy: true,
 		Note: providerNote(a.Provider.Name()),
 	}}
-	c.JSON(http.StatusOK, gin.H{"items": items, "product": "gvault"})
+	c.JSON(http.StatusOK, gin.H{"items": items, "product": "Gvault"})
 }
 
 func providerNote(name string) string {

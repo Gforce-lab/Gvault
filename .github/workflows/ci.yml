@@ -35,7 +35,7 @@ jobs:
       DATABASE_URL: postgres://vault:vault@localhost:5432/gvault?sslmode=disable
       DEV_AUTH_BYPASS: "true"
       PROVIDER: fake
-      PRODUCT_NAME: gvault
+      PRODUCT_NAME: Gvault
     steps:
       - name: Checkout
         uses: actions/checkout@v7

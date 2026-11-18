@@ -1,4 +1,4 @@
-# gvault 0.1.0-beta.1
+# Gvault 0.1.0-beta.1
 
 **Channel:** beta  
 **Date:** 2026-11-17
