@@ -39,7 +39,7 @@ Project name: **Gvault** · Module: `github.com/gvault/gvault` · Binaries: `gva
 - [x] Operations list + overview + audit list
 - [x] Namespace allowlist + optional OIDC Bearer auth
 - [x] S3/export fail-closed stub
-- [x] `gvaultctl` (create/check/restore/version)
+- [x] `gvaultctl` (full process CLI: capture/wait/check/restore/tags/promote/hold/delete/audits/crd/export)
 
 ### Beta packaging
 

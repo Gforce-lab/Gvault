@@ -5,9 +5,37 @@ This path uses **simulated** capture/restore. It does **not** create real GPU ch
 ```bash
 cp .env.example .env
 make docker-up
+make build
 make run-api
 # UI: http://localhost:8080
 ```
+
+## CLI (preferred)
+
+```bash
+./bin/gvaultctl health
+./bin/gvaultctl overview
+
+./bin/gvaultctl snapshot create llama8b-fake-v1 dev-gpu-cluster inference llama-vllm-0 main
+# copy snapshotId + operationId from output
+
+./bin/gvaultctl operation wait <operationId>
+./bin/gvaultctl snapshot get <snapshotId>
+
+./bin/gvaultctl snapshot check <snapshotId> dev-gpu-cluster
+./bin/gvaultctl snapshot restore <snapshotId> dev-gpu-cluster inference llama-vllm-restored-1 fake-node-b
+./bin/gvaultctl operation wait <restoreOperationId>
+
+./bin/gvaultctl snapshot tags <snapshotId> set env=demo model=llama
+./bin/gvaultctl snapshot promote <snapshotId> v0.1.0-demo
+./bin/gvaultctl audits
+./bin/gvaultctl providers
+./bin/gvaultctl providers nvidia-dry-run inference dry-1 llama-vllm-0 main
+```
+
+Full process map: root [README.md](../../README.md#processes-end-to-end).
+
+## curl
 
 ```bash
 # Health

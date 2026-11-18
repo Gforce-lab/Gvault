@@ -36,7 +36,14 @@ build:
 	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/gvaultctl ./cmd/gvaultctl
 
 gvaultctl: build
+	./$(BIN_DIR)/gvaultctl help
+
+.PHONY: gvaultctl-demo
+gvaultctl-demo: build
+	./$(BIN_DIR)/gvaultctl health
 	./$(BIN_DIR)/gvaultctl overview
+	./$(BIN_DIR)/gvaultctl providers
+
 
 run-api: build
 	./$(BIN_DIR)/gvault-api
