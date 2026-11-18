@@ -195,6 +195,28 @@ $("#restoreForm").addEventListener("submit", async (e) => {
   };
   if (probe) body.probeEndpoint = probe;
   try {
+    for (const field of ["gpuProduct", "driverVersion", "architecture", "imageDigest"]) {
+      const value = (fd.get(field) || "").toString().trim();
+      if (value) body[field] = value;
+    }
+    const spec = (fd.get("restorePodSpec") || "").toString().trim();
+    if (spec) {
+      body.restorePodSpec = JSON.parse(spec);
+      if (!body.restorePodSpec || typeof body.restorePodSpec !== "object" || Array.isArray(body.restorePodSpec)) {
+        throw new Error("Workload Pod spec must be a JSON object.");
+      }
+    }
+    const protocol = (fd.get("inferenceProtocol") || "").toString();
+    if (protocol) {
+      if (probe) throw new Error("Choose either a health URL or generation verification.");
+      const model = (fd.get("inferenceModel") || "").toString().trim();
+      if (protocol === "openai" && !model) throw new Error("Enter the served model name for OpenAI verification.");
+      body.inferenceProbe = {
+        protocol, model,
+        port: Number(fd.get("inferencePort")),
+        timeoutSeconds: Number(fd.get("inferenceTimeout")),
+      };
+    }
     const accepted = await api(`/api/v1/snapshots/${id}/restore`, {
       method: "POST",
       headers: { "Idempotency-Key": `ui-restore-${Date.now()}` },

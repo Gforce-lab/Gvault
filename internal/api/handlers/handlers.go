@@ -139,6 +139,8 @@ func (a *API) Restore(c *gin.Context) {
 		SnapshotID: c.Param("id"), ClusterID: body.TargetClusterID, Namespace: body.Namespace,
 		PodName: body.PodName, TargetNodeName: body.TargetNodeName,
 		ProbeEndpoint:  body.ProbeEndpoint,
+		InferenceProbe: body.InferenceProbe,
+		RestorePodSpec: body.RestorePodSpec,
 		IdempotencyKey: c.GetHeader(middleware.HeaderIdempotencyKey),
 		RequestedBy:    c.GetString(middleware.CtxActor),
 		RequestID:      c.GetString(middleware.CtxRequestID),
@@ -151,7 +153,7 @@ func (a *API) Restore(c *gin.Context) {
 		writeErr(c, err)
 		return
 	}
-	note := "NVIDIA restore — SUCCEEDED only after Pod + optional probe on a live cluster"
+	note := "NVIDIA restore — waits for Snapshot completion, Pod readiness, and any configured application probe"
 	if a.Provider.Name() != "nvidia-snapshot" {
 		note = "test harness restore — not a product GPU restore"
 	}

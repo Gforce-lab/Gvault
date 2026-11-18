@@ -148,6 +148,30 @@ func cmdSnapshot(base string) {
 		if probe := env("GVAULT_PROBE_ENDPOINT", ""); probe != "" {
 			body["probeEndpoint"] = probe
 		}
+		if path := env("GVAULT_RESTORE_POD_SPEC", ""); path != "" {
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				fatal(fmt.Errorf("could not read GVAULT_RESTORE_POD_SPEC"))
+			}
+			var spec map[string]any
+			if err := json.Unmarshal(raw, &spec); err != nil || spec == nil {
+				fatal(fmt.Errorf("GVAULT_RESTORE_POD_SPEC must contain a JSON Pod spec object"))
+			}
+			body["restorePodSpec"] = spec
+		}
+		model := env("GVAULT_INFERENCE_MODEL", "")
+		protocol := env("GVAULT_INFERENCE_PROTOCOL", "")
+		if model != "" || protocol != "" {
+			port, err := strconv.Atoi(env("GVAULT_INFERENCE_PORT", "8000"))
+			if err != nil {
+				fatal(fmt.Errorf("GVAULT_INFERENCE_PORT must be an integer"))
+			}
+			timeout, err := strconv.Atoi(env("GVAULT_INFERENCE_TIMEOUT_SECONDS", "60"))
+			if err != nil {
+				fatal(fmt.Errorf("GVAULT_INFERENCE_TIMEOUT_SECONDS must be an integer"))
+			}
+			body["inferenceProbe"] = map[string]any{"protocol": protocol, "model": model, "port": port, "timeoutSeconds": timeout}
+		}
 		// Optional hardware overrides for preflight (FakeProvider defaults to snapshot metadata).
 		if g := env("GVAULT_GPU", ""); g != "" {
 			body["gpuProduct"] = g
@@ -345,7 +369,12 @@ Environment:
   GVAULT_NAMESPACE           filter for snapshot list
   GVAULT_CLUSTER             clusterId for CRD create (default gpu-cluster-a)
   GVAULT_GPU / GVAULT_DRIVER / GVAULT_ARCH / GVAULT_DIGEST
-  GVAULT_PROBE_ENDPOINT      optional post-restore probe URL
+  GVAULT_PROBE_ENDPOINT      optional HTTP health check URL (does not verify inference)
+  GVAULT_INFERENCE_MODEL     enable generation check against the restored Pod IP
+  GVAULT_INFERENCE_PROTOCOL  openai (default) or snapshot-vllm (/generate)
+  GVAULT_RESTORE_POD_SPEC    path to JSON Pod spec; required for NVIDIA restores
+  GVAULT_INFERENCE_PORT      inference port (default 8000)
+  GVAULT_INFERENCE_TIMEOUT_SECONDS  generation check deadline (default 60)
   GVAULT_IDEMPOTENCY_KEY     override Idempotency-Key on mutations
   GVAULT_WAIT_TIMEOUT        wait timeout (default 30s)
   GVAULT_WAIT_POLL           wait poll interval (default 200ms)

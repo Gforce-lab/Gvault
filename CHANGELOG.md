@@ -2,6 +2,11 @@
 
 ## Unreleased — NVIDIA-first Phase 1
 
+- NVIDIA restores now wait for the Snapshot restore condition and Pod readiness, rather than Pod phase alone
+- Optional HTTP API/CLI `inferenceProbe` verifies bounded generation directly on the restored Pod IP
+- Configurable total restore deadline, retrying application probes, and sanitized inference audit outcomes
+- Pinned Snapshot vLLM `/generate` protocol, validated workload Pod specs, and accurate operation provider/simulation markers
+
 - Product default is `PROVIDER=nvidia-snapshot`; Fake is CI harness only (`ALLOW_TEST_PROVIDER`)
 - Documented storage model (`docs/storage.md`) and hard stop-limits (`docs/scope.md`); AMD out of scope
 - Live Kubernetes client for NVIDIA; probes; audits; OIDC/namespace authz; kustomize; expanded `gvaultctl`

@@ -185,6 +185,9 @@ func scanSnapshot(row scannable) (*domain.Snapshot, error) {
 	}
 	s.Status = domain.SnapshotStatus(status)
 	s.ProviderSnapshotRef.Kind = "FakePodSnapshot"
+	if s.Provider == "nvidia-snapshot" {
+		s.ProviderSnapshotRef.Kind = "PodSnapshot"
+	}
 	s.ProviderSnapshotRef.Namespace = s.Namespace
 	if len(artRaw) > 0 {
 		_ = json.Unmarshal(artRaw, &s.Artifact)

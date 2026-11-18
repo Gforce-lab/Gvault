@@ -125,3 +125,12 @@
 - **Status:** Accepted
 - **Decision:** PostgreSQL stores searchable metadata, operations, audit, and opaque artifact locators. Checkpoint bytes remain on NVIDIA Snapshot / RWX. The API never accepts or returns raw checkpoint payloads.
 - **Consequences:** Clear operator mental model; safer multi-tenant boundaries; AMD later adds a new provider package without changing this split.
+
+---
+
+## ADR-014 — Restore completion and optional inference verification
+
+- **Date:** 2026-11-18
+- **Status:** Proposed
+- **Decision:** NVIDIA restore completion requires the agent-owned `nvidia.com/Restored=True` condition and a Running/Ready Pod with the original UID. The HTTP API/CLI may additionally request an `inferenceProbe` using a fixed, bounded OpenAI completions request to that Pod's observed IP. Legacy health checks remain separate and cannot be described as inference evidence.
+- **Consequences:** Operations remain RUNNING through application verification. Total restore execution and inference retries have deadlines. Diagnostics and audits omit generated text and response bodies. No upstream Snapshot module dependency is added: the v0.3.0 condition vocabulary is mapped explicitly and unknown conditions remain pending. The pinned vLLM guide's `/generate` protocol is supported separately from OpenAI completions and cannot attest model identity. NVIDIA callers supply a complete `restorePodSpec`; the adapter preserves workload settings and injects the minimum control protocol, rejecting conflicts and mismatched images/GPU counts. Destination compatibility facts are explicit, not copied from the source. Operation provider/simulation markers come from stored snapshot provenance. Authentication to inference endpoints and CRD inference configuration remain separate work. Unit/integration fixtures are simulated; no real GPU success is claimed.

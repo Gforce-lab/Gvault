@@ -24,6 +24,8 @@ const (
 
 // Operation tracks durable async work.
 type Operation struct {
+	// Provider is projected from the snapshot when operations are read.
+	Provider       string
 	ID             string
 	Type           OperationType
 	SnapshotID     string
@@ -52,6 +54,21 @@ type RestoreRequest struct {
 	IdempotencyKey string
 	RequestedBy    string
 	RequestID      string
-	// ProbeEndpoint is an optional post-restore HTTP health/inference check URL.
+	// ProbeEndpoint is an optional legacy HTTP health check URL.
 	ProbeEndpoint string
+	// InferenceProbe verifies generation directly against the restored Pod IP.
+	InferenceProbe *InferenceProbe
+	// RestorePodSpec supplies the actual workload configuration, including GPU
+	// resources, commands, and model mounts. Never copied into audit events.
+	RestorePodSpec map[string]any
+}
+
+// InferenceProbe configures a bounded OpenAI /v1/completions or pinned
+// Snapshot vLLM /generate check.
+// The request uses a fixed synthetic prompt, never customer data.
+type InferenceProbe struct {
+	Protocol       string `json:"protocol,omitempty"`
+	Model          string `json:"model"`
+	Port           int    `json:"port,omitempty"`
+	TimeoutSeconds int    `json:"timeoutSeconds,omitempty"`
 }

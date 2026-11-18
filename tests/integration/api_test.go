@@ -17,6 +17,7 @@ import (
 	"github.com/gvault/gvault/internal/api"
 	"github.com/gvault/gvault/internal/api/handlers"
 	"github.com/gvault/gvault/internal/config"
+	"github.com/gvault/gvault/internal/domain"
 	"github.com/gvault/gvault/internal/provider/fake"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/service"
@@ -46,10 +47,11 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 	h := &handlers.API{DB: db, Svc: svc, Provider: fp}
 	r := api.NewRouter(cfg, slog.Default(), h)
 
-	body := []byte(`{"name":"itest-snap","clusterId":"dev","namespace":"ns1","source":{"podName":"p1","containerName":"main"},"provider":"fake"}`)
+	runID := domain.NewID("itest")
+	body, _ := json.Marshal(map[string]any{"name": runID, "clusterId": runID, "namespace": "ns1", "source": map[string]string{"podName": "p1", "containerName": "main"}, "provider": "fake"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotency-Key", "itest-capture-1")
+	req.Header.Set("Idempotency-Key", runID+"-capture")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusAccepted {
@@ -64,7 +66,7 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader(body))
 	req2.Header.Set("Content-Type", "application/json")
-	req2.Header.Set("Idempotency-Key", "itest-capture-1")
+	req2.Header.Set("Idempotency-Key", runID+"-capture")
 	r.ServeHTTP(w2, req2)
 	var accepted2 map[string]string
 	_ = json.Unmarshal(w2.Body.Bytes(), &accepted2)
@@ -78,6 +80,9 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 		r.ServeHTTP(w3, httptest.NewRequest(http.MethodGet, "/api/v1/operations/"+opID, nil))
 		var op map[string]any
 		_ = json.Unmarshal(w3.Body.Bytes(), &op)
+		if op["provider"] != "fake" || op["simulated"] != true {
+			t.Fatalf("fake operation must retain its provenance: %v", op)
+		}
 		if op["status"] == "SUCCEEDED" {
 			break
 		}
@@ -96,14 +101,32 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 		t.Fatal(w4.Body.String())
 	}
 
-	restBody := []byte(`{"targetClusterId":"dev","namespace":"ns1","podName":"restored-1"}`)
+	restBody, _ := json.Marshal(map[string]string{"targetClusterId": runID, "namespace": "ns1", "podName": "restored-1"})
 	wr := httptest.NewRecorder()
 	rreq := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots/"+snapID+"/restore", bytes.NewReader(restBody))
 	rreq.Header.Set("Content-Type", "application/json")
-	rreq.Header.Set("Idempotency-Key", "itest-restore-1")
+	rreq.Header.Set("Idempotency-Key", runID+"-restore")
 	r.ServeHTTP(wr, rreq)
 	if wr.Code != http.StatusAccepted {
 		t.Fatalf("restore status=%d body=%s", wr.Code, wr.Body.String())
+	}
+	var restoreAccepted map[string]string
+	if err := json.Unmarshal(wr.Body.Bytes(), &restoreAccepted); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for {
+		op, err := svc.GetOperation(ctx, restoreAccepted["operationId"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if op.Status == domain.OperationSucceeded {
+			break
+		}
+		if op.Status == domain.OperationFailed || time.Now().After(deadline) {
+			t.Fatalf("restore did not succeed: %+v", op)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

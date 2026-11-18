@@ -3,8 +3,9 @@ info:
   title: Gvault API
   version: 0.1.0
   description: |
-    Gvault HTTP API. Default capture/restore use FakeProvider only.
-    READY/SUCCEEDED means simulated application state — not a physical GPU checkpoint.
+    Gvault HTTP API. The product provider is NVIDIA Snapshot v0.3.0.
+    The fake provider is a CI-only harness; its outcomes are simulated.
+    NVIDIA restore success requires Snapshot completion, Pod readiness, and any configured application probe.
 servers:
   - url: http://localhost:8080
 paths:
@@ -137,7 +138,7 @@ components:
         name: { type: string }
         clusterId: { type: string }
         namespace: { type: string }
-        provider: { type: string, default: fake }
+        provider: { type: string, default: nvidia-snapshot }
         labels:
           type: object
           additionalProperties: { type: string }
@@ -169,3 +170,58 @@ components:
         driverVersion: { type: string }
         architecture: { type: string }
         imageDigest: { type: string }
+        probeEndpoint:
+          type: string
+          format: uri
+          description: Optional legacy HTTP health check. Does not verify generation. Mutually exclusive with inferenceProbe.
+        inferenceProbe:
+          $ref: "#/components/schemas/InferenceProbe"
+        restorePodSpec:
+          type: object
+          description: >-
+            Required for NVIDIA restores. Kubernetes Pod spec for the actual
+            workload, including the original container name, digest-pinned image,
+            GPU limits, command, model mounts, runtime class, and serving probes.
+            Gvault supplies the Snapshot control volume/environment and Never
+            restart policy, rejecting conflicting entries. Not included in audits.
+          additionalProperties: true
+    InferenceProbe:
+      type: object
+      description: >-
+        Optional generation check against the restored Pod IP, after Snapshot
+        completion and Pod readiness. openai POSTs a fixed synthetic prompt to
+        /v1/completions and requires non-empty text for the requested model;
+        snapshot-vllm uses the pinned guide's /generate API and checks non-empty
+        text without claiming model identity, which that protocol does not report.
+        Uses plain HTTP without authentication; redirects and environment proxies
+        are disabled. Mutually exclusive with probeEndpoint.
+      allOf:
+        - if:
+            required: [protocol]
+            properties:
+              protocol: { const: snapshot-vllm }
+          else:
+            required: [model]
+            properties:
+              model: { type: string, minLength: 1 }
+      properties:
+        protocol:
+          type: string
+          enum: [openai, snapshot-vllm]
+          default: openai
+        model:
+          type: string
+          maxLength: 256
+          description: Exact served model name, required for openai and matched in its response. Optional descriptive metadata for snapshot-vllm.
+        port:
+          type: integer
+          minimum: 0
+          maximum: 65535
+          default: 8000
+          description: Omitted or zero selects port 8000.
+        timeoutSeconds:
+          type: integer
+          minimum: 0
+          maximum: 300
+          default: 60
+          description: Omitted or zero selects 60 seconds. Also bounded by the total restore deadline.

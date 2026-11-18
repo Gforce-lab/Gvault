@@ -82,6 +82,7 @@ func main() {
 	svc := service.NewSnapshotService(db, snaps, ops, audits, p, log, cfg.PollInterval).
 		WithMetrics(metrics).
 		WithNamespacePolicy(cfg.NamespacePolicy()).
+		WithRestoreTimeout(cfg.RestoreTimeout).
 		WithProber(prober)
 	crdStore := controller.NewStore()
 	h := &handlers.API{

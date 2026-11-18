@@ -28,6 +28,12 @@ func MaybeFromEnv() (*Client, error) {
 	if cfg == nil {
 		return nil, nil
 	}
+	return NewForConfig(cfg)
+}
+
+// NewForConfig constructs the same dynamic client used by the live adapter.
+// Tests can point it at a local Kubernetes HTTP fixture without kubeconfig changes.
+func NewForConfig(cfg *rest.Config) (*Client, error) {
 	dyn, err := dynamic.NewForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("dynamic client: %w", err)

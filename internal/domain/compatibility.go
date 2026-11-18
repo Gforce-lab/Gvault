@@ -28,14 +28,15 @@ type CompatibilityResult struct {
 
 // SnapshotInfo is the subset of catalog metadata used for compatibility checks.
 type SnapshotInfo struct {
-	ID            string
-	Status        SnapshotStatus
-	ClusterID     string
-	Namespace     string
-	GPUProduct    string
-	GPUCount      int
-	DriverVersion string
-	Architecture  string
-	ImageDigest   string
-	Provider      string
+	SourceContainerName string
+	ID                  string
+	Status              SnapshotStatus
+	ClusterID           string
+	Namespace           string
+	GPUProduct          string
+	GPUCount            int
+	DriverVersion       string
+	Architecture        string
+	ImageDigest         string
+	Provider            string
 }

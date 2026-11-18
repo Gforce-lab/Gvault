@@ -184,23 +184,10 @@ func (p *Provider) RequestRestore(ctx context.Context, req provider.RestoreReque
 		return provider.ProviderRef{}, domain.NewAppError(domain.CodeSnapshotNotReady, "snapshot is not READY")
 	}
 
-	nodeSel := map[string]string{}
-	if req.TargetNodeName != "" {
-		nodeSel["kubernetes.io/hostname"] = req.TargetNodeName
+	obj, err := restorePod(req)
+	if err != nil {
+		return provider.ProviderRef{}, domain.NewAppError(domain.CodeValidation, err.Error())
 	}
-	container := "main"
-	manifest := BuildRestorePodContract(req.ProviderRef.Name, req.Namespace, req.PodName, container, nodeSel)
-	delete(manifest, "note") // strip documentation field before apply
-	if req.Snapshot.ImageDigest != "" {
-		if spec, ok := manifest["spec"].(map[string]any); ok {
-			if containers, ok := spec["containers"].([]any); ok && len(containers) > 0 {
-				if c0, ok := containers[0].(map[string]any); ok {
-					c0["image"] = req.Snapshot.ImageDigest
-				}
-			}
-		}
-	}
-	obj := &unstructured.Unstructured{Object: manifest}
 	created, err := p.kube.CreatePod(ctx, obj)
 	if err != nil {
 		return provider.ProviderRef{}, domain.WrapAppError(domain.CodeProvider, "create restore Pod failed", err)
@@ -228,21 +215,44 @@ func (p *Provider) RestoreStatus(ctx context.Context, ref provider.ProviderRef) 
 	}
 	phase, _, _ := unstructured.NestedString(obj.Object, "status", "phase")
 	node, _, _ := unstructured.NestedString(obj.Object, "spec", "nodeName")
-	state := provider.RestoreState{PodName: ref.Name, Node: node}
-	switch phase {
-	case "Running", "Succeeded":
-		state.Phase = domain.OperationSucceeded
-		state.Message = "restore Pod " + phase
-	case "Failed":
-		state.Phase = domain.OperationFailed
-		state.Message = "restore Pod Failed"
-	case "Pending":
-		state.Phase = domain.OperationRunning
-		state.Message = "restore Pod Pending"
-	default:
-		state.Phase = domain.OperationRunning
-		state.Message = "restore Pod " + defaultString(phase, "unknown")
+	podIP, _, _ := unstructured.NestedString(obj.Object, "status", "podIP")
+	state := provider.RestoreState{PodName: ref.Name, PodIP: podIP, Node: node, Phase: domain.OperationRunning}
+	if ref.UID == "" || string(obj.GetUID()) != ref.UID {
+		return state, domain.NewAppError(domain.CodeProvider, "restore Pod UID no longer matches the requested worker")
 	}
+	if obj.GetDeletionTimestamp() != nil {
+		state.Phase = domain.OperationFailed
+		state.Message = "restore Pod is terminating"
+		return state, nil
+	}
+	if phase == "Failed" || phase == "Succeeded" {
+		state.Phase = domain.OperationFailed
+		state.Message = "restore Pod exited before serving readiness (" + phase + ")"
+		return state, nil
+	}
+	// Snapshot v0.3.0 owns this condition. Pod Running alone only means the
+	// restore proxy has started, not that checkpoint restoration has completed.
+	conditions, _, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
+	for _, raw := range conditions {
+		condition, ok := raw.(map[string]any)
+		if !ok || condition["type"] != "nvidia.com/Restored" {
+			continue
+		}
+		if condition["status"] == "False" {
+			switch condition["reason"] {
+			case "RestoreFailed", "RestoreIncompatible", "RestorePartiallySucceeded":
+				state.Phase = domain.OperationFailed
+				state.Message = "Snapshot restore did not succeed: " + fmt.Sprint(condition["reason"])
+				return state, nil
+			}
+		}
+		if condition["status"] == "True" && phase == "Running" && kube.ConditionTrue(obj, "Ready") {
+			state.Phase = domain.OperationSucceeded
+			state.Message = "Snapshot restore completed and Pod is Ready"
+			return state, nil
+		}
+	}
+	state.Message = "waiting for Snapshot restore completion and Pod readiness"
 	return state, nil
 }
 

@@ -109,7 +109,8 @@ func (r *OperationRepo) ListRecent(ctx context.Context, limit int) ([]domain.Ope
 const operationSelect = `
 SELECT id, type, snapshot_id, cluster_id, namespace, status,
   requested_by, request_id, idempotency_key, target_pod_name, target_node_name,
-  error_code, error_message, created_at, updated_at, finished_at
+  error_code, error_message, created_at, updated_at, finished_at,
+  (SELECT provider FROM snapshots WHERE snapshots.id=operations.snapshot_id)
 FROM operations`
 
 func scanOperation(row scannable) (*domain.Operation, error) {
@@ -120,7 +121,7 @@ func scanOperation(row scannable) (*domain.Operation, error) {
 	err := row.Scan(
 		&op.ID, &typ, &op.SnapshotID, &op.ClusterID, &op.Namespace, &status,
 		&op.RequestedBy, &op.RequestID, &op.IdempotencyKey, &targetPod, &targetNode,
-		&errCode, &errMsg, &op.CreatedAt, &op.UpdatedAt, &finished,
+		&errCode, &errMsg, &op.CreatedAt, &op.UpdatedAt, &finished, &op.Provider,
 	)
 	if err != nil {
 		return nil, err

@@ -204,10 +204,18 @@ GVAULT_DIGEST=sha256:your-pinned-digest \
 
 ### F — Restore + optional probe
 
+NVIDIA restore waits for Snapshot completion and Pod readiness. Add an
+`inferenceProbe` to verify generation directly on the restored worker. See
+[restore readiness and inference verification](docs/api.md#restore-readiness-and-inference-verification)
+for the request body, CLI options, deadlines, and networking requirements.
+
 ```bash
-GVAULT_PROBE_ENDPOINT=http://restored:8080/health \
+GVAULT_RESTORE_POD_SPEC=examples/nvidia/restore-pod-spec.json \
+GVAULT_INFERENCE_PROTOCOL=snapshot-vllm \
+GVAULT_GPU="$GPU_PRODUCT" GVAULT_DRIVER="$DRIVER_VERSION" \
+GVAULT_ARCH="$CPU_ARCH" GVAULT_DIGEST="$IMAGE_DIGEST" \
   ./bin/gvaultctl snapshot restore <snapshotId> gpu-cluster-a inference llama-restored-1 gpu-node-b
-./bin/gvaultctl operation wait <operationId>
+GVAULT_WAIT_TIMEOUT=6m ./bin/gvaultctl operation wait <operationId>
 ```
 
 ### G — Tags / promote / hold

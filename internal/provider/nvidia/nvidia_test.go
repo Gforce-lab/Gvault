@@ -2,6 +2,7 @@ package nvidia_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/gvault/gvault/internal/domain"
@@ -50,13 +51,18 @@ func TestLiveCaptureRestoreWithFakeKube(t *testing.T) {
 		t.Fatalf("expected discovered metadata: %+v", st)
 	}
 
+	digest := "sha256:" + strings.Repeat("a", 64)
 	rref, err := p.RequestRestore(ctx, provider.RestoreRequest{
+		RestorePodSpec: map[string]any{"containers": []any{map[string]any{
+			"name": "main", "image": "example/vllm@" + digest,
+			"resources": map[string]any{"limits": map[string]any{"nvidia.com/gpu": "1"}},
+		}}},
 		SnapshotID: "snap-1", ClusterID: "cluster-1", Namespace: "inference",
 		PodName: "restored-1", TargetNodeName: "gpu-b",
 		Snapshot: domain.SnapshotInfo{
 			Status: domain.SnapshotReady, ClusterID: "cluster-1", Namespace: "inference",
 			GPUProduct: st.GPUProduct, DriverVersion: st.DriverVersion,
-			Architecture: "amd64", ImageDigest: st.ImageDigest,
+			Architecture: "amd64", ImageDigest: digest, SourceContainerName: "main",
 		},
 		ProviderRef: ref,
 	})

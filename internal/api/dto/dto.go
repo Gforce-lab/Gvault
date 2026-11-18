@@ -44,8 +44,10 @@ type RestoreBody struct {
 	Namespace       string `json:"namespace" binding:"required"`
 	PodName         string `json:"podName" binding:"required"`
 	TargetNodeName  string `json:"targetNodeName"`
-	// Optional post-restore inference/health probe URL.
-	ProbeEndpoint string `json:"probeEndpoint"`
+	// Optional legacy post-restore HTTP health probe URL.
+	ProbeEndpoint  string                 `json:"probeEndpoint"`
+	InferenceProbe *domain.InferenceProbe `json:"inferenceProbe,omitempty"`
+	RestorePodSpec map[string]any         `json:"restorePodSpec,omitempty"`
 	// Optional explicit target facts for preflight; defaults to snapshot metadata in fake demos.
 	GPUProduct    string `json:"gpuProduct"`
 	DriverVersion string `json:"driverVersion"`
@@ -98,6 +100,7 @@ type ContainerView struct {
 }
 
 type OperationView struct {
+	Provider       string     `json:"provider"`
 	ID             string     `json:"id"`
 	Type           string     `json:"type"`
 	SnapshotID     string     `json:"snapshotId"`
@@ -142,12 +145,13 @@ func FromSnapshot(s *domain.Snapshot) SnapshotView {
 
 func FromOperation(op *domain.Operation) OperationView {
 	return OperationView{
-		ID: op.ID, Type: string(op.Type), SnapshotID: op.SnapshotID, ClusterID: op.ClusterID,
+		Provider: op.Provider,
+		ID:       op.ID, Type: string(op.Type), SnapshotID: op.SnapshotID, ClusterID: op.ClusterID,
 		Namespace: op.Namespace, Status: string(op.Status), RequestedBy: op.RequestedBy,
 		RequestID: op.RequestID, IdempotencyKey: op.IdempotencyKey,
 		TargetPodName: op.TargetPodName, TargetNodeName: op.TargetNodeName,
 		ErrorCode: op.ErrorCode, ErrorMessage: op.ErrorMessage,
 		CreatedAt: op.CreatedAt, UpdatedAt: op.UpdatedAt, FinishedAt: op.FinishedAt,
-		Simulated: true,
+		Simulated: op.Provider != "nvidia-snapshot",
 	}
 }

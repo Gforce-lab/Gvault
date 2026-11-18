@@ -34,8 +34,21 @@ Without a live kube client, `/readyz` and capture stay **fail-closed** (prerequi
 ./bin/gvaultctl snapshot create llama8b gpu-cluster-a inference llama-vllm-0 main
 ./bin/gvaultctl operation wait <operationId>
 ./bin/gvaultctl snapshot check <snapshotId> gpu-cluster-a
-./bin/gvaultctl snapshot restore <snapshotId> gpu-cluster-a inference llama-restored-1 gpu-node-b
+GVAULT_RESTORE_POD_SPEC=examples/nvidia/restore-pod-spec.json \
+GVAULT_INFERENCE_PROTOCOL=snapshot-vllm \
+GVAULT_GPU="$GPU_PRODUCT" GVAULT_DRIVER="$DRIVER_VERSION" \
+GVAULT_ARCH="$CPU_ARCH" GVAULT_DIGEST="$IMAGE_DIGEST" \
+  ./bin/gvaultctl snapshot restore <snapshotId> gpu-cluster-a inference llama-restored-1 gpu-node-b
 ```
+
+The JSON Pod spec is derived from NVIDIA Snapshot **v0.3.0**'s
+[`docs/guides/vllm/restore/1-gpu.yaml`](https://github.com/ai-dynamo/snapshot/blob/v0.3.0/docs/guides/vllm/restore/1-gpu.yaml).
+Prepare that guide's `vllm-app` ConfigMap, model cache PVC, source workload, and
+checkpoint first. Preserve the checkpointed image/configuration. The model
+server exposes `/generate`, so select `snapshot-vllm`; ordinary OpenAI servers
+use `openai` plus `GVAULT_INFERENCE_MODEL`. Destination fact variables must
+describe the actual target node and image. For request fields and validation,
+see [restore verification](../../docs/api.md#restore-readiness-and-inference-verification).
 
 ## What gets stored
 

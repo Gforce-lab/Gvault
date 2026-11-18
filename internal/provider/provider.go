@@ -38,6 +38,7 @@ type RestoreState struct {
 	Phase   domain.OperationStatus
 	Message string
 	PodName string
+	PodIP   string
 	Node    string
 }
 
@@ -59,6 +60,7 @@ type CaptureRequest struct {
 
 // RestoreRequest is provider-facing restore intent.
 type RestoreRequest struct {
+	RestorePodSpec map[string]any
 	SnapshotID     string
 	ClusterID      string
 	Namespace      string
