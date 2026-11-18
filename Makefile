@@ -88,6 +88,3 @@ kustomize-build:
 
 kustomize-build-nvidia:
 	kubectl kustomize config/kustomize/overlays/nvidia
-
-kustomize-build-testharness:
-	kubectl kustomize config/kustomize/overlays/fake

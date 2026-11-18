@@ -7,13 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gvault/gvault/internal/api"
 	"github.com/gvault/gvault/internal/api/handlers"
 	"github.com/gvault/gvault/internal/config"
 	"github.com/gvault/gvault/internal/controller"
-	"github.com/gvault/gvault/internal/provider/fake"
 	"github.com/gvault/gvault/internal/provider/nvidia"
 	"github.com/gvault/gvault/internal/telemetry"
 )
@@ -55,10 +53,10 @@ func TestRouterPublicAndNVIDIADryRun(t *testing.T) {
 
 func TestRouterAuthRequiredWithoutBypass(t *testing.T) {
 	cfg := config.Config{
-		DevAuthBypass: false, APIKey: "k", Provider: "fake", AllowTestProvider: true, UIDir: "",
+		DevAuthBypass: false, APIKey: "k", Provider: "nvidia-snapshot", EnableNVIDIAProvider: true, UIDir: "",
 	}
-	fp := fake.New(10 * time.Millisecond)
-	h := &handlers.API{Provider: fp, Metrics: telemetry.New(), CRDStore: controller.NewStore()}
+	p, _ := nvidia.NewWithMemoryCluster()
+	h := &handlers.API{Provider: p, Metrics: telemetry.New(), CRDStore: controller.NewStore()}
 	r := api.NewRouter(cfg, slog.Default(), h)
 
 	w := httptest.NewRecorder()

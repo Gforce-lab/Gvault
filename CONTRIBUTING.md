@@ -2,7 +2,7 @@
 
 1. Read [docs/scope.md](docs/scope.md), [docs/storage.md](docs/storage.md), and [docs/decisions.md](docs/decisions.md).
 2. Phase 1 is **NVIDIA-only** — do not add AMD or other GPU vendors yet.
-3. Do not present the CI `fake` harness as a product GPU provider.
+3. Do not reintroduce a FakeProvider; tests must use the NVIDIA adapter (+ in-memory kube if needed).
 4. Do not claim real GPU restore success without hardware evidence.
 5. Run `make fmt test build` before opening a PR.
 6. Record material design choices in `docs/decisions.md`.
@@ -18,4 +18,4 @@ git push -u origin HEAD
 gh pr create --fill
 ```
 
-Use the PR template sections as written. Maintainers use them to verify FakeProvider safety, fail-closed NVIDIA behavior, and test evidence.
+Use the PR template sections as written. Maintainers use them to verify NVIDIA fail-closed behavior and test evidence.

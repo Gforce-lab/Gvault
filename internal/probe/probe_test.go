@@ -9,20 +9,20 @@ import (
 	"github.com/gvault/gvault/internal/probe"
 )
 
-func TestFakeProber(t *testing.T) {
-	r := probe.FakeProber{}.Check(context.Background(), "http://fake/health")
-	if !r.OK || !r.Simulated {
-		t.Fatalf("%+v", r)
-	}
-}
-
 func TestHTTPProber(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(200)
 	}))
 	defer srv.Close()
 	r := probe.HTTPProber{}.Check(context.Background(), srv.URL)
-	if !r.OK {
+	if !r.OK || r.Simulated {
+		t.Fatalf("%+v", r)
+	}
+}
+
+func TestHTTPProberRejectsEmpty(t *testing.T) {
+	r := probe.HTTPProber{}.Check(context.Background(), "")
+	if r.OK {
 		t.Fatalf("%+v", r)
 	}
 }

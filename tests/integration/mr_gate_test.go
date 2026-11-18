@@ -19,7 +19,6 @@ import (
 	"github.com/gvault/gvault/internal/authz"
 	"github.com/gvault/gvault/internal/config"
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/provider/fake"
 	"github.com/gvault/gvault/internal/provider/nvidia"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/service"
@@ -45,21 +44,19 @@ func TestMRGateOverviewAuditsAndNamespacePolicy(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
 
-	fp := fake.New(20 * time.Millisecond)
+	p, _ := nvidia.NewWithMemoryCluster()
 	cfg := config.Config{
-		DevAuthBypass: true, Provider: "fake", AllowTestProvider: true,
-		FakeProviderStep: 20 * time.Millisecond, PollInterval: 15 * time.Millisecond,
-		AllowedNamespaces: "inference",
+		DevAuthBypass: true, Provider: "nvidia-snapshot", EnableNVIDIAProvider: true,
+		PollInterval: 15 * time.Millisecond, AllowedNamespaces: "inference",
 	}
 	svc := service.NewSnapshotService(
 		db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db),
-		fp, slog.Default(), cfg.PollInterval,
+		p, slog.Default(), cfg.PollInterval,
 	).WithNamespacePolicy(authz.NewNamespacePolicy(cfg.AllowedNamespaces))
-	h := &handlers.API{DB: db, Svc: svc, Provider: fp}
+	h := &handlers.API{DB: db, Svc: svc, Provider: p}
 	r := api.NewRouter(cfg, slog.Default(), h)
 
-	// Forbidden namespace
-	bad := []byte(`{"name":"x","clusterId":"c","namespace":"denied","source":{"podName":"p","containerName":"c"},"provider":"fake"}`)
+	bad := []byte(`{"name":"x","clusterId":"c","namespace":"denied","source":{"podName":"p","containerName":"c"},"provider":"nvidia-snapshot"}`)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader(bad))
 	req.Header.Set("Content-Type", "application/json")
@@ -70,7 +67,7 @@ func TestMRGateOverviewAuditsAndNamespacePolicy(t *testing.T) {
 
 	runID := domain.NewID("mrgate")
 	okBody, _ := json.Marshal(map[string]any{
-		"name": runID, "clusterId": "c1", "namespace": "inference", "provider": "fake",
+		"name": runID, "clusterId": "c1", "namespace": "inference", "provider": "nvidia-snapshot",
 		"source": map[string]string{"podName": "p1", "containerName": "main"},
 	})
 	w2 := httptest.NewRecorder()

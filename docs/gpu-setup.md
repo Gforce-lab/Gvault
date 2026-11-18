@@ -1,6 +1,6 @@
 # GPU setup guide (NVIDIA Snapshot v0.3.0)
 
-This path is **not** satisfied by Kind or the local FakeProvider demo.
+This path is **not** satisfied by Kind alone; a real NVIDIA GPU cluster is required for measured READY.
 
 ## Prerequisites (verify before claiming PASSED)
 

@@ -9,20 +9,20 @@ import (
 	v1alpha1 "github.com/gvault/gvault/api/v1alpha1"
 	"github.com/gvault/gvault/internal/controller"
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/provider/fake"
+	"github.com/gvault/gvault/internal/provider/nvidia"
 )
 
 func TestManagerReconcilesWithLeaderElection(t *testing.T) {
-	fp := fake.New(20 * time.Millisecond)
+	p, _ := nvidia.NewWithMemoryCluster()
 	store := controller.NewStore()
 	store.PutSnapshot(&v1alpha1.VaultSnapshot{
 		Metadata: v1alpha1.ObjectMeta{Name: "m1", Namespace: "ns", Generation: 1},
 		Spec: v1alpha1.VaultSnapshotSpec{
-			Provider: "fake", ClusterID: "dev",
+			Provider: "nvidia-snapshot", ClusterID: "gpu-cluster-a",
 			Source: v1alpha1.VaultSnapshotSource{PodName: "p", ContainerName: "c"},
 		},
 	})
-	mgr := controller.NewManager(store, fp, slog.Default(), controller.ManagerConfig{
+	mgr := controller.NewManager(store, p, slog.Default(), controller.ManagerConfig{
 		LeaderElection: true, ReconcileInterval: 15 * time.Millisecond,
 	})
 	ctx, cancel := context.WithCancel(context.Background())

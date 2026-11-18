@@ -68,13 +68,9 @@ func (a *API) CreateSnapshot(c *gin.Context) {
 		writeErr(c, err)
 		return
 	}
-	note := "NVIDIA Snapshot path — READY only after provider reports success on a live cluster"
-	if a.Provider.Name() != "nvidia-snapshot" {
-		note = "test harness path — not a product GPU provider"
-	}
 	c.JSON(http.StatusAccepted, dto.AcceptedBody{
 		SnapshotID: res.Snapshot.ID, OperationID: res.Operation.ID, Status: string(res.Operation.Status),
-		Note: note,
+		Note: "NVIDIA Snapshot path — READY only after provider reports success on a live cluster",
 	})
 }
 
@@ -153,13 +149,9 @@ func (a *API) Restore(c *gin.Context) {
 		writeErr(c, err)
 		return
 	}
-	note := "NVIDIA restore — waits for Snapshot completion, Pod readiness, and any configured application probe"
-	if a.Provider.Name() != "nvidia-snapshot" {
-		note = "test harness restore — not a product GPU restore"
-	}
 	c.JSON(http.StatusAccepted, dto.AcceptedBody{
 		SnapshotID: c.Param("id"), OperationID: res.Operation.ID, Status: string(res.Operation.Status),
-		Note: note,
+		Note: "NVIDIA restore — waits for Snapshot completion, Pod readiness, and any configured application probe",
 	})
 }
 
@@ -184,7 +176,7 @@ func providerNote(name string) string {
 	if name == "nvidia-snapshot" {
 		return "NVIDIA Snapshot v0.3.0 — Phase 1 product provider; live kube required for READY"
 	}
-	return "CI test harness only — not a product GPU provider (AMD out of scope for Phase 1)"
+	return "unsupported provider (Phase 1 is NVIDIA only)"
 }
 
 func writeErr(c *gin.Context, err error) {

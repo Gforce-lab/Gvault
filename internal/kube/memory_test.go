@@ -9,9 +9,9 @@ import (
 	"github.com/gvault/gvault/internal/kube"
 )
 
-func TestFakeAPILifecycle(t *testing.T) {
-	fk := kube.NewFakeAPI()
-	fk.ReadyOnGet = true
+func TestMemoryAPILifecycle(t *testing.T) {
+	mem := kube.NewMemoryAPI()
+	mem.ReadyOnGet = true
 	ctx := context.Background()
 	obj := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "nvidia.com/v1alpha1",
@@ -19,27 +19,31 @@ func TestFakeAPILifecycle(t *testing.T) {
 		"metadata":   map[string]any{"name": "s1", "namespace": "ns"},
 		"spec":       map[string]any{},
 	}}
-	created, err := fk.CreatePodSnapshot(ctx, obj)
+	created, err := mem.CreatePodSnapshot(ctx, obj)
 	if err != nil || created.GetUID() == "" {
 		t.Fatalf("create=%v err=%v", created, err)
 	}
-	got, err := fk.GetPodSnapshot(ctx, "ns", "s1")
+	got, err := mem.GetPodSnapshot(ctx, "ns", "s1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !kube.ConditionTrue(got, "Ready") {
 		t.Fatal("expected Ready condition")
 	}
+	digest, _, _ := unstructured.NestedString(got.Object, "status", "imageDigest")
+	if digest != kube.TestDigest {
+		t.Fatalf("digest=%s", digest)
+	}
 	pod := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "v1", "kind": "Pod",
 		"metadata": map[string]any{"name": "p1", "namespace": "ns"},
 		"spec":     map[string]any{},
 	}}
-	cp, err := fk.CreatePod(ctx, pod)
+	cp, err := mem.CreatePod(ctx, pod)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gp, err := fk.GetPod(ctx, "ns", cp.GetName())
+	gp, err := mem.GetPod(ctx, "ns", cp.GetName())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +51,10 @@ func TestFakeAPILifecycle(t *testing.T) {
 	if phase != "Running" {
 		t.Fatalf("phase=%s", phase)
 	}
-	if err := fk.DeletePodSnapshot(ctx, "ns", "s1"); err != nil {
+	if !kube.ConditionTrue(gp, "Ready") {
+		t.Fatal("expected Pod Ready")
+	}
+	if err := mem.DeletePodSnapshot(ctx, "ns", "s1"); err != nil {
 		t.Fatal(err)
 	}
 }

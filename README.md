@@ -304,7 +304,6 @@ Contract: [openapi/openapi.yaml](openapi/openapi.yaml) · [docs/api.md](docs/api
 |---|---|---|
 | `PROVIDER` | `nvidia-snapshot` | Product provider |
 | `ENABLE_NVIDIA_PROVIDER` | `true` | Required for NVIDIA |
-| `ALLOW_TEST_PROVIDER` | unset | CI harness only — not for demos/prod |
 | `KUBECONFIG` | optional | Live cluster access |
 | `ALLOWED_NAMESPACES` | empty | Allowlist when set |
 | `ENABLE_S3_EXPORT` | `false` | Still fail-closed |

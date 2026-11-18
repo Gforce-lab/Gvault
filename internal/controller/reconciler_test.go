@@ -8,19 +8,19 @@ import (
 	v1alpha1 "github.com/gvault/gvault/api/v1alpha1"
 	"github.com/gvault/gvault/internal/controller"
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/provider/fake"
+	"github.com/gvault/gvault/internal/provider/nvidia"
 )
 
 func TestReconcileSnapshotIdempotent(t *testing.T) {
-	fp := fake.New(15 * time.Millisecond)
+	p, _ := nvidia.NewWithMemoryCluster()
 	store := controller.NewStore()
-	rec := controller.NewReconciler(store, fp)
+	rec := controller.NewReconciler(store, p)
 	obj := &v1alpha1.VaultSnapshot{
 		APIVersion: v1alpha1.Group + "/" + v1alpha1.Version,
 		Kind:       v1alpha1.KindSnapshot,
 		Metadata:   v1alpha1.ObjectMeta{Name: "demo", Namespace: "inference", Generation: 1},
 		Spec: v1alpha1.VaultSnapshotSpec{
-			Provider: "fake", ClusterID: "dev",
+			Provider: "nvidia-snapshot", ClusterID: "gpu-cluster-a",
 			Source: v1alpha1.VaultSnapshotSource{PodName: "p0", ContainerName: "main"},
 		},
 	}
@@ -45,7 +45,6 @@ func TestReconcileSnapshotIdempotent(t *testing.T) {
 	if last.Status.ProviderSnapshotUID == "" {
 		t.Fatal("expected provider uid")
 	}
-	// Reconcile again must not fail / duplicate panic
 	again, err := rec.ReconcileSnapshot(context.Background(), "inference", "demo")
 	if err != nil {
 		t.Fatal(err)

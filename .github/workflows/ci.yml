@@ -40,8 +40,6 @@ jobs:
       DEV_AUTH_BYPASS: "true"
       PROVIDER: nvidia-snapshot
       ENABLE_NVIDIA_PROVIDER: "true"
-      # Integration tests construct the in-process harness directly; not a product path.
-      ALLOW_TEST_PROVIDER: "true"
       PRODUCT_NAME: Gvault
       RESTORE_TIMEOUT_SECONDS: "300"
 

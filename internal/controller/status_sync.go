@@ -32,7 +32,7 @@ func (s *StatusSync) UpsertFromVaultSnapshot(ctx context.Context, obj *v1alpha1.
 			Provider:      defaultString(obj.Spec.Provider, "fake"),
 			SourcePodName: obj.Spec.Source.PodName, SourceContainerName: obj.Spec.Source.ContainerName,
 			ProviderSnapshotRef: domain.ProviderSnapshotRef{
-				Kind: "FakePodSnapshot", Namespace: obj.Metadata.Namespace,
+				Kind: "PodSnapshot", Namespace: obj.Metadata.Namespace,
 				Name: obj.Status.ProviderSnapshotName, UID: obj.Status.ProviderSnapshotUID,
 			},
 			ProviderContentName: obj.Status.ProviderContentName,

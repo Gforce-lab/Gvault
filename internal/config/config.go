@@ -17,8 +17,6 @@ type Config struct {
 	Provider             string
 	DevAuthBypass        bool
 	APIKey               string
-	AllowTestProvider    bool // CI-only harness; not a product GPU provider
-	FakeProviderStep     time.Duration
 	MigrationsDir        string
 	PollInterval         time.Duration
 	EnableNVIDIAProvider bool
@@ -46,8 +44,6 @@ func Load() (Config, error) {
 		Provider:             getenv("PROVIDER", "nvidia-snapshot"),
 		DevAuthBypass:        getenvBool("DEV_AUTH_BYPASS", false),
 		APIKey:               os.Getenv("API_KEY"),
-		AllowTestProvider:    getenvBool("ALLOW_TEST_PROVIDER", false),
-		FakeProviderStep:     time.Duration(getenvInt("FAKE_PROVIDER_STEP_MS", 200)) * time.Millisecond,
 		MigrationsDir:        getenv("MIGRATIONS_DIR", "db/migrations"),
 		PollInterval:         time.Duration(getenvInt("POLL_INTERVAL_MS", 100)) * time.Millisecond,
 		EnableNVIDIAProvider: getenvBool("ENABLE_NVIDIA_PROVIDER", true),
@@ -67,13 +63,8 @@ func Load() (Config, error) {
 		if !cfg.EnableNVIDIAProvider {
 			return cfg, fmt.Errorf("PROVIDER=nvidia-snapshot requires ENABLE_NVIDIA_PROVIDER=true")
 		}
-	case "fake":
-		// Test harness only — not a product GPU provider (see docs/scope.md).
-		if !cfg.AllowTestProvider {
-			return cfg, fmt.Errorf("PROVIDER=fake is a CI test harness only; set ALLOW_TEST_PROVIDER=true or use PROVIDER=nvidia-snapshot")
-		}
 	default:
-		return cfg, fmt.Errorf("unsupported PROVIDER %q (Phase 1 supports nvidia-snapshot; AMD is out of scope)", cfg.Provider)
+		return cfg, fmt.Errorf("unsupported PROVIDER %q (Phase 1 supports nvidia-snapshot only; AMD is out of scope)", cfg.Provider)
 	}
 	oidc := cfg.OIDC()
 	if !cfg.DevAuthBypass && cfg.APIKey == "" && !oidc.Enabled() {

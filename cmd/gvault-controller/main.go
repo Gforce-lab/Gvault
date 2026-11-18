@@ -13,14 +13,14 @@ import (
 	v1alpha1 "github.com/gvault/gvault/api/v1alpha1"
 	"github.com/gvault/gvault/internal/controller"
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/provider/fake"
+	"github.com/gvault/gvault/internal/provider/nvidia"
 )
 
-// Local controller demo uses the CI harness provider for GPU-free reconcile loops.
-// Product deployments use nvidia-snapshot against a live cluster (see docs/scope.md).
+// Local controller demo uses the NVIDIA adapter with an in-memory kube API
+// (no physical GPU). Production uses a live cluster client.
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	fp := fake.New(50 * time.Millisecond)
+	p, _ := nvidia.NewWithMemoryCluster()
 	store := controller.NewStore()
 
 	obj := &v1alpha1.VaultSnapshot{
@@ -28,13 +28,13 @@ func main() {
 		Kind:       v1alpha1.KindSnapshot,
 		Metadata:   v1alpha1.ObjectMeta{Name: "demo", Namespace: "inference", Generation: 1},
 		Spec: v1alpha1.VaultSnapshotSpec{
-			Provider: "fake", ClusterID: "dev",
+			Provider: "nvidia-snapshot", ClusterID: "gpu-cluster-a",
 			Source: v1alpha1.VaultSnapshotSource{PodName: "llama-vllm-0", ContainerName: "main"},
 		},
 	}
 	store.PutSnapshot(obj)
 
-	mgr := controller.NewManager(store, fp, log, controller.ManagerConfig{
+	mgr := controller.NewManager(store, p, log, controller.ManagerConfig{
 		LeaderElection:    true,
 		LeaderElectionID:  "gvault-controller-demo",
 		ReconcileInterval: 40 * time.Millisecond,
@@ -42,7 +42,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mgr.Start(ctx)
-	log.Info("gvault-controller demo", "leading", mgr.IsLeading(), "note", "in-memory FakeProvider reconcile — not a real GPU path")
+	log.Info("gvault-controller demo", "leading", mgr.IsLeading(), "provider", p.Name(), "note", "in-memory kube + nvidia adapter — not a physical GPU claim")
 
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -66,7 +66,6 @@ func main() {
 }
 
 func init() {
-	// Allow SIGINT during longer demos when run interactively.
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

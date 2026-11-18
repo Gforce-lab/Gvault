@@ -12,7 +12,6 @@ func TestLoadNVIDIADefaults(t *testing.T) {
 	t.Setenv("PROVIDER", "")
 	t.Setenv("ENABLE_NVIDIA_PROVIDER", "")
 	t.Setenv("DEV_AUTH_BYPASS", "true")
-	t.Setenv("ALLOW_TEST_PROVIDER", "")
 	t.Setenv("API_KEY", "")
 	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
 	cfg, err := config.Load()
@@ -24,36 +23,14 @@ func TestLoadNVIDIADefaults(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsFakeWithoutAllow(t *testing.T) {
-	t.Setenv("PROVIDER", "fake")
-	t.Setenv("ALLOW_TEST_PROVIDER", "false")
+func TestLoadRejectsNonNVIDIAProviders(t *testing.T) {
 	t.Setenv("DEV_AUTH_BYPASS", "true")
 	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
-	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "CI test harness") {
-		t.Fatalf("expected fake gate error, got %v", err)
-	}
-}
-
-func TestLoadAllowsFakeWithAllow(t *testing.T) {
-	t.Setenv("PROVIDER", "fake")
-	t.Setenv("ALLOW_TEST_PROVIDER", "true")
-	t.Setenv("DEV_AUTH_BYPASS", "true")
-	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Provider != "fake" || !cfg.AllowTestProvider {
-		t.Fatalf("%+v", cfg)
-	}
-}
-
-func TestLoadRejectsAMDProvider(t *testing.T) {
-	t.Setenv("PROVIDER", "amd")
-	t.Setenv("DEV_AUTH_BYPASS", "true")
-	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
-	if _, err := config.Load(); err == nil || !strings.Contains(err.Error(), "AMD") {
-		t.Fatalf("expected AMD out-of-scope error, got %v", err)
+	for _, provider := range []string{"fake", "amd", "rocm"} {
+		t.Setenv("PROVIDER", provider)
+		if _, err := config.Load(); err == nil {
+			t.Fatalf("expected rejection for PROVIDER=%s", provider)
+		}
 	}
 }
 

@@ -2,7 +2,6 @@ package nvidia_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/gvault/gvault/internal/domain"
@@ -22,10 +21,8 @@ func TestPrerequisitesFailClosed(t *testing.T) {
 	}
 }
 
-func TestLiveCaptureRestoreWithFakeKube(t *testing.T) {
-	fk := kube.NewFakeAPI()
-	fk.ReadyOnGet = true
-	p := nvidia.New(true).WithKubeClient(fk)
+func TestLiveCaptureRestoreWithMemoryCluster(t *testing.T) {
+	p, _ := nvidia.NewWithMemoryCluster()
 	ctx := context.Background()
 	if err := p.CheckPrerequisites(ctx, "cluster-1"); err != nil {
 		t.Fatal(err)
@@ -51,7 +48,7 @@ func TestLiveCaptureRestoreWithFakeKube(t *testing.T) {
 		t.Fatalf("expected discovered metadata: %+v", st)
 	}
 
-	digest := "sha256:" + strings.Repeat("a", 64)
+	digest := kube.TestDigest
 	rref, err := p.RequestRestore(ctx, provider.RestoreRequest{
 		RestorePodSpec: map[string]any{"containers": []any{map[string]any{
 			"name": "main", "image": "example/vllm@" + digest,

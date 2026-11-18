@@ -2,7 +2,7 @@
 
 ## Beta note
 
-`0.1.0-beta.1` does **not** publish cold-vs-restore GPU timings. FakeProvider durations are not comparable to hardware.
+`0.1.0-beta.1` does **not** publish cold-vs-restore GPU timings until measured on hardware.
 
 When a real GPU cluster is available, record:
 
@@ -11,4 +11,4 @@ When a real GPU cluster is available, record:
 - P50/P95 across multiple attempts
 - source/destination node, artifact size, failure rate
 
-Never substitute FakeProvider timings for measured GPU results.
+Never substitute CI in-memory kube timings for measured GPU results.
