@@ -2,12 +2,12 @@
 
 ---
 
-## ADR-000 — Product name Gvault
+## ADR-000 — Product / repo name Gvault
 
-- **Date:** 2026-11-17
+- **Date:** 2026-11-17 (updated 2026-11-18)
 - **Status:** Accepted
-- **Decision:** Project name is **Gvault**. Go module is `github.com/gvault/gvault`. Binaries are `gvault-api`, `gvault-controller`, `gvaultctl`.
-- **Consequences:** README, UI, and docs use **Gvault**. Go module/imports stay `github.com/gvault/gvault`; binaries stay `gvault-api` / `gvaultctl`; CRD group `vault.gvault.dev`; DB name `gvault`.
+- **Decision:** Product and GitHub repo are **Gvault** (`Gforce-lab/Gvault`). Go module remains `github.com/gvault/gvault`. Binaries remain `gvault-api`, `gvault-controller`, `gvaultctl`.
+- **Consequences:** README, UI, API `product` field, and docs say **Gvault**. Technical identifiers (module, binaries, DB, CRD DNS) stay lowercase `gvault`.
 
 ---
 
