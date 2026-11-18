@@ -26,6 +26,9 @@ func (s *SnapshotService) Restore(ctx context.Context, req domain.RestoreRequest
 	if req.SnapshotID == "" || req.ClusterID == "" || req.Namespace == "" || req.PodName == "" {
 		return nil, domain.NewAppError(domain.CodeValidation, "snapshotId, clusterId, namespace, and podName are required")
 	}
+	if err := s.authorizeNS(req.Namespace); err != nil {
+		return nil, err
+	}
 	snap, err := s.snaps.Get(ctx, req.SnapshotID)
 	if err != nil {
 		return nil, err
@@ -115,7 +118,10 @@ func (s *SnapshotService) Restore(ctx context.Context, req domain.RestoreRequest
 	if err := s.audits.Insert(ctx, tx, postgres.AuditEvent{
 		Actor: req.RequestedBy, Action: "snapshot.restore", ResourceType: "snapshot",
 		ResourceID: snap.ID, Decision: "accepted", RequestID: req.RequestID,
-		Attributes: map[string]any{"operationId": op.ID, "podName": req.PodName, "simulated": true},
+		Attributes: map[string]any{
+			"operationId": op.ID, "podName": req.PodName,
+			"probeEndpoint": req.ProbeEndpoint, "simulated": s.provider.Name() == "fake",
+		},
 	}); err != nil {
 		return nil, err
 	}
@@ -174,6 +180,26 @@ func (s *SnapshotService) runRestore(opID string, snap *domain.Snapshot, req dom
 		}
 		switch st.Phase {
 		case domain.OperationSucceeded:
+			if req.ProbeEndpoint != "" && s.prober != nil {
+				pr := s.prober.Check(ctx, req.ProbeEndpoint)
+				_ = s.audits.Insert(ctx, nil, postgres.AuditEvent{
+					Actor: "system", Action: "snapshot.restore.probe", ResourceType: "snapshot",
+					ResourceID: snap.ID, Decision: map[bool]string{true: "passed", false: "failed"}[pr.OK],
+					RequestID: opID, Attributes: map[string]any{
+						"ok": pr.OK, "message": pr.Message, "endpoint": pr.Endpoint, "simulated": pr.Simulated,
+					},
+				})
+				if !pr.OK {
+					if s.metrics != nil {
+						s.metrics.IncOperation(s.provider.Name(), "restore_probe_failed")
+					}
+					s.failOp(ctx, opID, snap.ID, domain.NewAppError(domain.CodeProvider, "post-restore probe failed: "+pr.Message))
+					return
+				}
+			} else if s.provider.Name() == "fake" && s.prober != nil {
+				// Always run FakeProber for FakeProvider restores so the probe path is exercised.
+				_ = s.prober.Check(ctx, defaultString(req.ProbeEndpoint, "http://fake-restored/health"))
+			}
 			s.succeedOp(ctx, opID)
 			if s.metrics != nil {
 				s.metrics.IncOperation(s.provider.Name(), "restore_succeeded")
@@ -209,3 +235,4 @@ func toSnapshotInfo(s *domain.Snapshot) domain.SnapshotInfo {
 		Provider:      s.Provider,
 	}
 }
+

@@ -44,6 +44,8 @@ type RestoreBody struct {
 	Namespace       string `json:"namespace" binding:"required"`
 	PodName         string `json:"podName" binding:"required"`
 	TargetNodeName  string `json:"targetNodeName"`
+	// Optional post-restore inference/health probe URL.
+	ProbeEndpoint string `json:"probeEndpoint"`
 	// Optional explicit target facts for preflight; defaults to snapshot metadata in fake demos.
 	GPUProduct    string `json:"gpuProduct"`
 	DriverVersion string `json:"driverVersion"`

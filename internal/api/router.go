@@ -16,7 +16,13 @@ import (
 func NewRouter(cfg config.Config, log *slog.Logger, h *handlers.API) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.Use(gin.Recovery(), middleware.RequestID(), middleware.AccessLog(log), middleware.Auth(cfg.DevAuthBypass, cfg.APIKey))
+	r.Use(
+		gin.Recovery(),
+		middleware.RequestID(),
+		middleware.AccessLog(log),
+		middleware.Auth(cfg.DevAuthBypass, cfg.APIKey, cfg.OIDC()),
+		middleware.RequireNamespace(cfg.NamespacePolicy()),
+	)
 
 	r.GET("/healthz", h.Healthz)
 	r.GET("/readyz", h.Readyz)
@@ -40,8 +46,10 @@ func NewRouter(cfg config.Config, log *slog.Logger, h *handlers.API) *gin.Engine
 		v1.POST("/snapshots/:id/hold", h.SetHold)
 		v1.GET("/operations", h.ListOperations)
 		v1.GET("/operations/:id", h.GetOperation)
+		v1.GET("/audits", h.ListAudits)
 		v1.GET("/providers", h.ListProviders)
 		v1.POST("/providers/nvidia/dry-run", h.NVIDIADryRun)
+		v1.POST("/export/s3", h.ExportS3)
 
 		// Beta CRD bridge (in-memory reconciler; GPU-free)
 		v1.POST("/crds/vaultsnapshots", h.CreateVaultSnapshotCRD)

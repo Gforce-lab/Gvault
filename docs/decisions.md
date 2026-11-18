@@ -80,3 +80,30 @@
 - **Status:** Accepted
 - **Decision:** Ship all plan milestones on the FakeProvider + NVIDIA dry-run surface as **beta**, with explicit limitations (no live GPU READY claims, in-memory CRD bridge, API-key auth).
 - **Consequences:** Version embedded in binaries; CHANGELOG + release notes required; post-beta work focuses on live kube client and measured GPU restore.
+
+---
+
+## ADR-009 — Live kube behind NVIDIA flag only
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Wire `internal/kube` into `nvidia-snapshot` only. Default `PROVIDER=fake` never talks to the cluster. NVIDIA without a live client stays fail-closed (prerequisites SKIPPED, not PASSED).
+- **Consequences:** FakeProvider CI/UI regressions are impossible from kube wiring; live path unit-tested with `kube.FakeAPI`.
+
+---
+
+## ADR-010 — OIDC + namespace allowlist additive to API key
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Keep API-key auth. When `OIDC_ISSUER`/`OIDC_AUDIENCE`/`OIDC_CLIENT_SECRET` are set, accept Bearer HS256 JWTs. `ALLOWED_NAMESPACES` gates capture/restore when non-empty.
+- **Consequences:** Staging can use OIDC without breaking existing API-key clients; production should replace HS256 with JWKS later.
+
+---
+
+## ADR-011 — S3/export fail-closed until pin verifies
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Expose `/api/v1/export/s3` but always refuse until the pinned NVIDIA Snapshot release documents a verified export path.
+- **Consequences:** No accidental READY export claims; roadmap item stays explicit.

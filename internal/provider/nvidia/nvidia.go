@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"github.com/gvault/gvault/internal/compatibility"
 	"github.com/gvault/gvault/internal/domain"
+	"github.com/gvault/gvault/internal/kube"
 	"github.com/gvault/gvault/internal/provider"
 )
 
@@ -23,11 +26,12 @@ const APIGroupVersion = "nvidia.com/v1alpha1"
 // Provider maps gvault intent onto NVIDIA Snapshot CRDs (feature-flagged).
 // Without a live Kubernetes client it reports prerequisites unmet — never fakes GPU READY.
 type Provider struct {
-	mu       sync.Mutex
-	enabled  bool
-	engine   *compatibility.Engine
-	caps     map[string]captureRec
-	kubeLive bool // true only when a real client is wired (Milestone 3 cluster path)
+	mu      sync.Mutex
+	enabled bool
+	engine  *compatibility.Engine
+	kube    kube.API
+	caps    map[string]captureRec
+	rests   map[string]restoreRec
 }
 
 type captureRec struct {
@@ -35,17 +39,37 @@ type captureRec struct {
 	req provider.CaptureRequest
 }
 
+type restoreRec struct {
+	ref provider.ProviderRef
+	req provider.RestoreRequest
+}
+
 func New(enabled bool) *Provider {
 	return &Provider{
 		enabled: enabled,
 		engine:  compatibility.New(),
 		caps:    map[string]captureRec{},
+		rests:   map[string]restoreRec{},
 	}
+}
+
+// WithKubeClient wires a live (or test) Kubernetes API. Enables the real PodSnapshot path.
+func (p *Provider) WithKubeClient(c kube.API) *Provider {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.kube = c
+	return p
 }
 
 func (p *Provider) Name() string { return "nvidia-snapshot" }
 
 func (p *Provider) PinnedVersion() string { return PinnedRelease }
+
+func (p *Provider) kubeLive() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.kube != nil && p.kube.Live()
+}
 
 func (p *Provider) CheckPrerequisites(ctx context.Context, clusterID string) error {
 	_ = ctx
@@ -55,7 +79,7 @@ func (p *Provider) CheckPrerequisites(ctx context.Context, clusterID string) err
 	if !p.enabled {
 		return domain.NewAppError(domain.CodeProvider, "nvidia provider disabled; set ENABLE_NVIDIA_PROVIDER=true after pinning "+PinnedRelease)
 	}
-	if !p.kubeLive {
+	if !p.kubeLive() {
 		return domain.NewAppError(domain.CodeProvider, "nvidia Snapshot operator/cluster client not connected; see docs/gpu-setup.md (prerequisites SKIPPED, not PASSED)")
 	}
 	return nil
@@ -65,15 +89,83 @@ func (p *Provider) RequestCapture(ctx context.Context, req provider.CaptureReque
 	if err := p.CheckPrerequisites(ctx, req.ClusterID); err != nil {
 		return provider.ProviderRef{}, err
 	}
-	// Real path would create nvidia.com/v1alpha1 PodSnapshot with:
-	// spec.source.podRef.{name,uid,containers:[containerName]}
-	return provider.ProviderRef{}, domain.NewAppError(domain.CodeProvider, "live PodSnapshot creation requires a connected kube client")
+	if req.Namespace == "" || req.Name == "" || req.SourcePodName == "" || req.SourceContainerName == "" {
+		return provider.ProviderRef{}, domain.NewAppError(domain.CodeValidation, "incomplete capture request")
+	}
+
+	manifest := BuildPodSnapshotManifest(req.Namespace, req.Name, req.SourcePodName, "", req.SourceContainerName)
+	obj := &unstructured.Unstructured{Object: manifest}
+	created, err := p.kube.CreatePodSnapshot(ctx, obj)
+	if err != nil {
+		return provider.ProviderRef{}, domain.WrapAppError(domain.CodeProvider, "create PodSnapshot failed", err)
+	}
+
+	ref := provider.ProviderRef{
+		Provider:    p.Name(),
+		Kind:        "PodSnapshot",
+		Namespace:   created.GetNamespace(),
+		Name:        created.GetName(),
+		UID:         string(created.GetUID()),
+		ContentName: created.GetName(),
+	}
+	p.mu.Lock()
+	p.caps[ref.UID] = captureRec{ref: ref, req: req}
+	p.mu.Unlock()
+	return ref, nil
 }
 
 func (p *Provider) CaptureStatus(ctx context.Context, ref provider.ProviderRef) (provider.CaptureState, error) {
-	_ = ctx
-	_ = ref
-	return provider.CaptureState{}, domain.NewAppError(domain.CodeProvider, "nvidia CaptureStatus requires live cluster")
+	if err := p.CheckPrerequisites(ctx, "local"); err != nil {
+		return provider.CaptureState{}, err
+	}
+	obj, err := p.kube.GetPodSnapshot(ctx, ref.Namespace, ref.Name)
+	if err != nil {
+		return provider.CaptureState{}, domain.WrapAppError(domain.CodeProvider, "get PodSnapshot failed", err)
+	}
+
+	state := provider.CaptureState{
+		ContentName: ref.ContentName,
+		Artifact: domain.ArtifactRef{
+			Backend: "nvidia-snapshot",
+			StoreID: PinnedRelease,
+			Handle:  ref.Name,
+		},
+	}
+
+	switch {
+	case kube.ConditionTrue(obj, "Ready"):
+		state.Phase = domain.SnapshotReady
+		state.Message = "PodSnapshot Ready (live cluster)"
+		if digest, ok, _ := unstructured.NestedString(obj.Object, "status", "imageDigest"); ok {
+			state.ImageDigest = digest
+		}
+		if gpu, ok, _ := unstructured.NestedString(obj.Object, "status", "gpuProduct"); ok {
+			state.GPUProduct = gpu
+		}
+		if drv, ok, _ := unstructured.NestedString(obj.Object, "status", "driverVersion"); ok {
+			state.DriverVersion = drv
+		}
+	case kube.ConditionTrue(obj, "Failed"):
+		state.Phase = domain.SnapshotFailed
+		state.Message = "PodSnapshot Failed"
+	default:
+		phase, _, _ := unstructured.NestedString(obj.Object, "status", "phase")
+		switch phase {
+		case "Ready", "Succeeded":
+			state.Phase = domain.SnapshotReady
+			state.Message = "PodSnapshot " + phase
+		case "Failed":
+			state.Phase = domain.SnapshotFailed
+			state.Message = "PodSnapshot Failed"
+		case "Capturing", "InProgress":
+			state.Phase = domain.SnapshotCapturing
+			state.Message = "PodSnapshot capturing"
+		default:
+			state.Phase = domain.SnapshotPending
+			state.Message = "PodSnapshot pending"
+		}
+	}
+	return state, nil
 }
 
 func (p *Provider) EvaluateCompatibility(ctx context.Context, snapshot domain.SnapshotInfo, target domain.TargetInfo) domain.CompatibilityResult {
@@ -85,28 +177,96 @@ func (p *Provider) RequestRestore(ctx context.Context, req provider.RestoreReque
 	if err := p.CheckPrerequisites(ctx, req.ClusterID); err != nil {
 		return provider.ProviderRef{}, err
 	}
-	return provider.ProviderRef{}, domain.NewAppError(domain.CodeProvider, "live restore Pod creation requires a connected kube client")
+	if req.Namespace == "" || req.PodName == "" || req.ProviderRef.Name == "" {
+		return provider.ProviderRef{}, domain.NewAppError(domain.CodeValidation, "incomplete restore request")
+	}
+	if req.Snapshot.Status != domain.SnapshotReady {
+		return provider.ProviderRef{}, domain.NewAppError(domain.CodeSnapshotNotReady, "snapshot is not READY")
+	}
+
+	nodeSel := map[string]string{}
+	if req.TargetNodeName != "" {
+		nodeSel["kubernetes.io/hostname"] = req.TargetNodeName
+	}
+	container := "main"
+	manifest := BuildRestorePodContract(req.ProviderRef.Name, req.Namespace, req.PodName, container, nodeSel)
+	delete(manifest, "note") // strip documentation field before apply
+	if req.Snapshot.ImageDigest != "" {
+		if spec, ok := manifest["spec"].(map[string]any); ok {
+			if containers, ok := spec["containers"].([]any); ok && len(containers) > 0 {
+				if c0, ok := containers[0].(map[string]any); ok {
+					c0["image"] = req.Snapshot.ImageDigest
+				}
+			}
+		}
+	}
+	obj := &unstructured.Unstructured{Object: manifest}
+	created, err := p.kube.CreatePod(ctx, obj)
+	if err != nil {
+		return provider.ProviderRef{}, domain.WrapAppError(domain.CodeProvider, "create restore Pod failed", err)
+	}
+	ref := provider.ProviderRef{
+		Provider:  p.Name(),
+		Kind:      "Pod",
+		Namespace: created.GetNamespace(),
+		Name:      created.GetName(),
+		UID:       string(created.GetUID()),
+	}
+	p.mu.Lock()
+	p.rests[ref.UID] = restoreRec{ref: ref, req: req}
+	p.mu.Unlock()
+	return ref, nil
 }
 
 func (p *Provider) RestoreStatus(ctx context.Context, ref provider.ProviderRef) (provider.RestoreState, error) {
-	_ = ctx
-	_ = ref
-	return provider.RestoreState{}, domain.NewAppError(domain.CodeProvider, "nvidia RestoreStatus requires live cluster")
+	if err := p.CheckPrerequisites(ctx, "local"); err != nil {
+		return provider.RestoreState{}, err
+	}
+	obj, err := p.kube.GetPod(ctx, ref.Namespace, ref.Name)
+	if err != nil {
+		return provider.RestoreState{}, domain.WrapAppError(domain.CodeProvider, "get restore Pod failed", err)
+	}
+	phase, _, _ := unstructured.NestedString(obj.Object, "status", "phase")
+	node, _, _ := unstructured.NestedString(obj.Object, "spec", "nodeName")
+	state := provider.RestoreState{PodName: ref.Name, Node: node}
+	switch phase {
+	case "Running", "Succeeded":
+		state.Phase = domain.OperationSucceeded
+		state.Message = "restore Pod " + phase
+	case "Failed":
+		state.Phase = domain.OperationFailed
+		state.Message = "restore Pod Failed"
+	case "Pending":
+		state.Phase = domain.OperationRunning
+		state.Message = "restore Pod Pending"
+	default:
+		state.Phase = domain.OperationRunning
+		state.Message = "restore Pod " + defaultString(phase, "unknown")
+	}
+	return state, nil
 }
 
 func (p *Provider) RequestDelete(ctx context.Context, ref provider.ProviderRef) error {
 	if err := p.CheckPrerequisites(ctx, "local"); err != nil {
 		return err
 	}
-	_ = ref
-	return domain.NewAppError(domain.CodeProvider, "nvidia delete requires live cluster / provider lifecycle")
+	if ref.Kind == "PodSnapshot" || ref.Kind == "" {
+		if err := p.kube.DeletePodSnapshot(ctx, ref.Namespace, ref.Name); err != nil {
+			return domain.WrapAppError(domain.CodeProvider, "delete PodSnapshot failed", err)
+		}
+	}
+	p.mu.Lock()
+	delete(p.caps, ref.UID)
+	delete(p.rests, ref.UID)
+	p.mu.Unlock()
+	return nil
 }
 
 // BuildPodSnapshotManifest returns the pinned upstream capture YAML shape (documentation + dry-run).
 func BuildPodSnapshotManifest(namespace, name, podName, podUID, containerName string) map[string]any {
 	podRef := map[string]any{
 		"name":       podName,
-		"containers": []string{containerName},
+		"containers": []any{containerName},
 	}
 	if podUID != "" {
 		podRef["uid"] = podUID
@@ -143,8 +303,8 @@ func BuildRestorePodContract(podSnapshotName, namespace, podName, containerName 
 	}
 	spec := map[string]any{
 		"restartPolicy": "Never", // required by Snapshot v0.3.0 restore proxy contract
-		"containers": []map[string]any{
-			{
+		"containers": []any{
+			map[string]any{
 				"name": containerName,
 				// Command is replaced by NRI restore proxy on capable nodes; keep source command.
 				"image": "PINNED_IMAGE_DIGEST_REQUIRED",
@@ -161,4 +321,11 @@ func BuildRestorePodContract(podSnapshotName, namespace, podName, containerName 
 		"spec":       spec,
 		"note":       fmt.Sprintf("Pinned to NVIDIA Snapshot %s — not executed without live cluster", PinnedRelease),
 	}
+}
+
+func defaultString(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
 }

@@ -64,3 +64,9 @@ install-crds:
 
 uninstall-crds:
 	kubectl delete -f config/crd/bases/ --ignore-not-found
+
+kustomize-build:
+	kubectl kustomize config/kustomize/overlays/fake
+
+kustomize-build-nvidia:
+	kubectl kustomize config/kustomize/overlays/nvidia

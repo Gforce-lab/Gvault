@@ -11,6 +11,10 @@ func (s *SnapshotService) ListOperations(ctx context.Context, limit int) ([]doma
 	return s.ops.ListRecent(ctx, limit)
 }
 
+func (s *SnapshotService) ListAudits(ctx context.Context, limit int) ([]postgres.AuditEvent, error) {
+	return s.audits.ListRecent(ctx, limit)
+}
+
 func (s *SnapshotService) SetTags(ctx context.Context, snapshotID string, tags map[string]string) (map[string]string, error) {
 	if _, err := s.snaps.Get(ctx, snapshotID); err != nil {
 		return nil, err

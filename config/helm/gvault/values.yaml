@@ -11,7 +11,16 @@ env:
   DEV_AUTH_BYPASS: "false"
   ENABLE_NVIDIA_PROVIDER: "false"
   PRODUCT_NAME: Gvault
+  ENABLE_S3_EXPORT: "false"
+  LEADER_ELECTION: "true"
+  # ALLOWED_NAMESPACES: "inference,platform"
+  # OIDC_ISSUER: ""
+  # OIDC_AUDIENCE: gvault
 postgres:
   # Point at an external Postgres in real deployments.
   url: ""
 resources: {}
+leaderElection:
+  enabled: true
+  id: gvault-controller
+

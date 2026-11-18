@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/gvault/gvault/internal/authz"
 )
 
 // Config holds runtime settings for gvault API.
@@ -21,6 +23,13 @@ type Config struct {
 	EnableNVIDIAProvider bool
 	UIDir                string
 	ProductName          string
+	AllowedNamespaces    string
+	OIDCIssuer           string
+	OIDCAudience         string
+	OIDCClientSecret     string
+	EnableS3Export       bool
+	LeaderElection       bool
+	ProbeDefaultURL      string
 }
 
 func Load() (Config, error) {
@@ -37,6 +46,13 @@ func Load() (Config, error) {
 		EnableNVIDIAProvider: getenvBool("ENABLE_NVIDIA_PROVIDER", false),
 		UIDir:                getenv("UI_DIR", "web"),
 		ProductName:          getenv("PRODUCT_NAME", "Gvault"),
+		AllowedNamespaces:    os.Getenv("ALLOWED_NAMESPACES"),
+		OIDCIssuer:           os.Getenv("OIDC_ISSUER"),
+		OIDCAudience:         getenv("OIDC_AUDIENCE", "gvault"),
+		OIDCClientSecret:     os.Getenv("OIDC_CLIENT_SECRET"),
+		EnableS3Export:       getenvBool("ENABLE_S3_EXPORT", false),
+		LeaderElection:       getenvBool("LEADER_ELECTION", false),
+		ProbeDefaultURL:      os.Getenv("PROBE_DEFAULT_URL"),
 	}
 	switch cfg.Provider {
 	case "fake", "nvidia-snapshot":
@@ -46,10 +62,23 @@ func Load() (Config, error) {
 	if cfg.Provider == "nvidia-snapshot" && !cfg.EnableNVIDIAProvider {
 		return cfg, fmt.Errorf("PROVIDER=nvidia-snapshot requires ENABLE_NVIDIA_PROVIDER=true")
 	}
-	if !cfg.DevAuthBypass && cfg.APIKey == "" {
-		return cfg, fmt.Errorf("API_KEY is required when DEV_AUTH_BYPASS is false")
+	oidc := cfg.OIDC()
+	if !cfg.DevAuthBypass && cfg.APIKey == "" && !oidc.Enabled() {
+		return cfg, fmt.Errorf("API_KEY or OIDC_* is required when DEV_AUTH_BYPASS is false")
 	}
 	return cfg, nil
+}
+
+func (c Config) OIDC() authz.OIDCConfig {
+	return authz.OIDCConfig{
+		Issuer:   c.OIDCIssuer,
+		Audience: c.OIDCAudience,
+		Secret:   c.OIDCClientSecret,
+	}
+}
+
+func (c Config) NamespacePolicy() *authz.NamespacePolicy {
+	return authz.NewNamespacePolicy(c.AllowedNamespaces)
 }
 
 func getenv(k, def string) string {

@@ -18,13 +18,14 @@ import (
 )
 
 type API struct {
-	DB         *sql.DB
-	Svc        *service.SnapshotService
-	Provider   provider.CheckpointProvider
-	Metrics    *telemetry.Metrics
-	CRDStore   *controller.MemoryStore
-	Reconciler *controller.Reconciler
-	StatusSync *controller.StatusSync
+	DB             *sql.DB
+	Svc            *service.SnapshotService
+	Provider       provider.CheckpointProvider
+	Metrics        *telemetry.Metrics
+	CRDStore       *controller.MemoryStore
+	Reconciler     *controller.Reconciler
+	StatusSync     *controller.StatusSync
+	EnableS3Export bool
 }
 
 func (a *API) Healthz(c *gin.Context) {
@@ -133,6 +134,7 @@ func (a *API) Restore(c *gin.Context) {
 	res, err := a.Svc.Restore(c.Request.Context(), domain.RestoreRequest{
 		SnapshotID: c.Param("id"), ClusterID: body.TargetClusterID, Namespace: body.Namespace,
 		PodName: body.PodName, TargetNodeName: body.TargetNodeName,
+		ProbeEndpoint:  body.ProbeEndpoint,
 		IdempotencyKey: c.GetHeader(middleware.HeaderIdempotencyKey),
 		RequestedBy:    c.GetString(middleware.CtxActor),
 		RequestID:      c.GetString(middleware.CtxRequestID),

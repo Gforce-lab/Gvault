@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gvault/gvault/internal/authz"
 	"github.com/gvault/gvault/internal/domain"
 )
 
@@ -16,6 +17,7 @@ const (
 	HeaderIdempotencyKey = "Idempotency-Key"
 	CtxRequestID         = "requestId"
 	CtxActor             = "actor"
+	CtxAuthMethod        = "authMethod"
 )
 
 func RequestID() gin.HandlerFunc {
@@ -40,13 +42,14 @@ func AccessLog(log *slog.Logger) gin.HandlerFunc {
 			"status", c.Writer.Status(),
 			"duration_ms", time.Since(start).Milliseconds(),
 			"requestId", c.GetString(CtxRequestID),
+			"actor", c.GetString(CtxActor),
 		)
 	}
 }
 
-// Auth enforces API key unless DevAuthBypass is enabled.
+// Auth enforces API key and/or OIDC Bearer JWT unless DevAuthBypass is enabled.
 // Static UI routes are always readable so the flow dashboard can load.
-func Auth(devBypass bool, apiKey string) gin.HandlerFunc {
+func Auth(devBypass bool, apiKey string, oidc authz.OIDCConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if path == "/healthz" || path == "/readyz" || path == "/api/v1/version" || path == "/" || strings.HasPrefix(path, "/assets/") {
@@ -55,19 +58,71 @@ func Auth(devBypass bool, apiKey string) gin.HandlerFunc {
 		}
 		if devBypass {
 			c.Set(CtxActor, "dev-bypass")
+			c.Set(CtxAuthMethod, "dev-bypass")
 			c.Next()
 			return
 		}
-		got := c.GetHeader(HeaderAPIKey)
-		if subtle.ConstantTimeCompare([]byte(got), []byte(apiKey)) != 1 {
-			c.AbortWithStatusJSON(401, gin.H{
-				"code":      string(domain.CodeUnauthorized),
-				"message":   "invalid or missing API key",
-				"requestId": c.GetString(CtxRequestID),
+
+		authzHeader := c.GetHeader("Authorization")
+		if oidc.Enabled() && strings.HasPrefix(strings.ToLower(authzHeader), "bearer ") {
+			token := strings.TrimSpace(authzHeader[7:])
+			sub, err := oidc.VerifyBearer(c.Request.Context(), token)
+			if err != nil {
+				c.AbortWithStatusJSON(401, gin.H{
+					"code":      string(domain.CodeUnauthorized),
+					"message":   err.Error(),
+					"requestId": c.GetString(CtxRequestID),
+				})
+				return
+			}
+			c.Set(CtxActor, sub)
+			c.Set(CtxAuthMethod, "oidc")
+			c.Next()
+			return
+		}
+
+		if apiKey != "" {
+			got := c.GetHeader(HeaderAPIKey)
+			if subtle.ConstantTimeCompare([]byte(got), []byte(apiKey)) == 1 {
+				c.Set(CtxActor, "api-key")
+				c.Set(CtxAuthMethod, "api-key")
+				c.Next()
+				return
+			}
+		}
+
+		c.AbortWithStatusJSON(401, gin.H{
+			"code":      string(domain.CodeUnauthorized),
+			"message":   "invalid or missing credentials",
+			"requestId": c.GetString(CtxRequestID),
+		})
+	}
+}
+
+// RequireNamespace enforces ALLOWED_NAMESPACES when configured.
+// It checks JSON body "namespace" query, or :namespace path param.
+func RequireNamespace(policy *authz.NamespacePolicy) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if policy == nil || !policy.Enabled() {
+			c.Next()
+			return
+		}
+		ns := c.Param("namespace")
+		if ns == "" {
+			ns = c.Query("namespace")
+		}
+		if ns == "" {
+			// Body may be bound later; handlers also call Authorize explicitly.
+			c.Next()
+			return
+		}
+		if err := policy.Authorize(ns); err != nil {
+			ae := err.(*domain.AppError)
+			c.AbortWithStatusJSON(403, gin.H{
+				"code": string(ae.Code), "message": ae.Message, "requestId": c.GetString(CtxRequestID),
 			})
 			return
 		}
-		c.Set(CtxActor, "api-key")
 		c.Next()
 	}
 }

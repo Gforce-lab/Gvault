@@ -13,6 +13,8 @@ import (
 	"github.com/gvault/gvault/internal/api/handlers"
 	"github.com/gvault/gvault/internal/config"
 	"github.com/gvault/gvault/internal/controller"
+	"github.com/gvault/gvault/internal/kube"
+	"github.com/gvault/gvault/internal/probe"
 	"github.com/gvault/gvault/internal/provider"
 	"github.com/gvault/gvault/internal/provider/fake"
 	"github.com/gvault/gvault/internal/provider/nvidia"
@@ -49,21 +51,42 @@ func main() {
 	var p provider.CheckpointProvider
 	switch cfg.Provider {
 	case "nvidia-snapshot":
-		p = nvidia.New(cfg.EnableNVIDIAProvider)
+		np := nvidia.New(cfg.EnableNVIDIAProvider)
+		kc, err := kube.MaybeFromEnv()
+		if err != nil {
+			log.Error("kube client", "error", err)
+			os.Exit(1)
+		}
+		if kc != nil {
+			np.WithKubeClient(kc)
+			log.Info("nvidia provider wired to kubernetes client", "pinned", nvidia.PinnedRelease)
+		} else {
+			log.Warn("nvidia provider enabled but no kube client; prerequisites remain SKIPPED")
+		}
+		p = np
 	default:
 		p = fake.New(cfg.FakeProviderStep)
+	}
+
+	var prober probe.Prober = probe.FakeProber{}
+	if cfg.Provider == "nvidia-snapshot" {
+		prober = probe.HTTPProber{}
 	}
 
 	metrics := telemetry.New()
 	snaps := postgres.NewSnapshotRepo(db)
 	ops := postgres.NewOperationRepo(db)
 	audits := postgres.NewAuditRepo(db)
-	svc := service.NewSnapshotService(db, snaps, ops, audits, p, log, cfg.PollInterval).WithMetrics(metrics)
+	svc := service.NewSnapshotService(db, snaps, ops, audits, p, log, cfg.PollInterval).
+		WithMetrics(metrics).
+		WithNamespacePolicy(cfg.NamespacePolicy()).
+		WithProber(prober)
 	crdStore := controller.NewStore()
 	h := &handlers.API{
 		DB: db, Svc: svc, Provider: p, Metrics: metrics,
 		CRDStore: crdStore, Reconciler: controller.NewReconciler(crdStore, p),
 		StatusSync: &controller.StatusSync{Snaps: snaps},
+		EnableS3Export: cfg.EnableS3Export,
 	}
 	router := api.NewRouter(cfg, log, h)
 
@@ -76,6 +99,8 @@ func main() {
 			"addr", cfg.HTTPAddr,
 			"provider", p.Name(),
 			"ui", cfg.UIDir,
+			"oidc", cfg.OIDC().Enabled(),
+			"namespacePolicy", cfg.NamespacePolicy().Enabled(),
 			"note", "beta: FakeProvider default is simulated — not a real GPU checkpoint",
 		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

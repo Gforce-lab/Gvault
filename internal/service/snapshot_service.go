@@ -7,7 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gvault/gvault/internal/authz"
 	"github.com/gvault/gvault/internal/domain"
+	"github.com/gvault/gvault/internal/probe"
 	"github.com/gvault/gvault/internal/provider"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/telemetry"
@@ -24,6 +26,8 @@ type SnapshotService struct {
 	metrics  *telemetry.Metrics
 	log      *slog.Logger
 	poll     time.Duration
+	nsPolicy *authz.NamespacePolicy
+	prober   probe.Prober
 
 	mu       sync.Mutex
 	capRefs  map[string]provider.ProviderRef // operationID -> ref
@@ -51,6 +55,7 @@ func NewSnapshotService(
 		provider: p,
 		log:      log,
 		poll:     poll,
+		prober:   probe.FakeProber{},
 		capRefs:  map[string]provider.ProviderRef{},
 		restRefs: map[string]provider.ProviderRef{},
 	}
@@ -62,6 +67,27 @@ func (s *SnapshotService) WithMetrics(m *telemetry.Metrics) *SnapshotService {
 	return s
 }
 
+// WithNamespacePolicy restricts capture/restore namespaces when allowlist is set.
+func (s *SnapshotService) WithNamespacePolicy(p *authz.NamespacePolicy) *SnapshotService {
+	s.nsPolicy = p
+	return s
+}
+
+// WithProber sets the post-restore readiness checker (FakeProber default for FakeProvider).
+func (s *SnapshotService) WithProber(p probe.Prober) *SnapshotService {
+	if p != nil {
+		s.prober = p
+	}
+	return s
+}
+
+func (s *SnapshotService) authorizeNS(namespace string) error {
+	if s.nsPolicy == nil {
+		return nil
+	}
+	return s.nsPolicy.Authorize(namespace)
+}
+
 type CaptureResult struct {
 	Snapshot  *domain.Snapshot
 	Operation *domain.Operation
@@ -69,6 +95,9 @@ type CaptureResult struct {
 
 func (s *SnapshotService) Capture(ctx context.Context, req domain.CaptureRequest) (*CaptureResult, error) {
 	if err := validateCapture(req); err != nil {
+		return nil, err
+	}
+	if err := s.authorizeNS(req.Namespace); err != nil {
 		return nil, err
 	}
 	if req.Provider == "" {

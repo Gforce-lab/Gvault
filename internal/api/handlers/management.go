@@ -7,6 +7,7 @@ import (
 	"github.com/gvault/gvault/internal/api/dto"
 	"github.com/gvault/gvault/internal/api/middleware"
 	"github.com/gvault/gvault/internal/domain"
+	"github.com/gvault/gvault/internal/export"
 	"github.com/gvault/gvault/internal/provider/nvidia"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/version"
@@ -134,6 +135,42 @@ func (a *API) NVIDIADryRun(c *gin.Context) {
 		"restorePod":    nvidia.BuildRestorePodContract(body.Name, body.Namespace, body.PodName+"-restored", body.ContainerName, nil),
 		"note":          "Dry-run only. Live capture/restore requires NVIDIA Snapshot " + nvidia.PinnedRelease + " on a GPU cluster.",
 	})
+}
+
+func (a *API) ListAudits(c *gin.Context) {
+	items, err := a.Svc.ListAudits(c.Request.Context(), queryInt(c, "limit", 50))
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	out := make([]gin.H, 0, len(items))
+	for _, e := range items {
+		out = append(out, gin.H{
+			"id": e.ID, "actor": e.Actor, "action": e.Action,
+			"resourceType": e.ResourceType, "resourceId": e.ResourceID,
+			"decision": e.Decision, "requestId": e.RequestID,
+			"timestamp": e.Timestamp, "attributes": e.Attributes,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"items": out})
+}
+
+func (a *API) ExportS3(c *gin.Context) {
+	var body struct {
+		SnapshotID string `json:"snapshotId" binding:"required"`
+		Bucket     string `json:"bucket" binding:"required"`
+		Key        string `json:"key" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeErr(c, domain.NewAppError(domain.CodeValidation, err.Error()))
+		return
+	}
+	ex := export.S3Exporter{Enabled: a.EnableS3Export}
+	if err := ex.Export(c.Request.Context(), body.SnapshotID, body.Bucket, body.Key); err != nil {
+		writeErr(c, err)
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"status": "accepted"})
 }
 
 // DeleteSnapshotGuarded uses retention/active-restore safety (Milestone 5).

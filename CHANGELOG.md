@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — milestone hardening
+
+- Live Kubernetes client for `nvidia-snapshot` (`internal/kube`); FakeProvider unchanged
+- Post-restore inference/health probes; audit list API; namespace allowlist; OIDC Bearer (HS256 staging)
+- Controller manager with leader-election-shaped loop; kustomize base/overlays
+- S3/export endpoint remain fail-closed until upstream pin verifies export
+
 ## 0.1.0-beta.1 — 2026-11-17
 
 First public **beta** of **Gvault**.
@@ -19,9 +26,9 @@ First public **beta** of **Gvault**.
 ### Explicit beta limitations
 
 - Default provider is FakeProvider (simulated READY — not a physical GPU checkpoint)
-- Live NVIDIA kube client not wired; real GPU A→B restore requires a cluster (see `docs/gpu-setup.md`)
-- CRD bridge is in-process (not a full controller-runtime manager / leader election yet)
-- Auth is API-key / dev bypass (OIDC deferred)
+- Live NVIDIA path requires kube client + GPU cluster (see `docs/gpu-setup.md`); without them prerequisites stay SKIPPED
+- CRD bridge uses MemoryStore + manager loop (full controller-runtime/envtest still later)
+- Auth is API-key / optional OIDC HS256 / dev bypass
 
 ### Upgrade notes
 
