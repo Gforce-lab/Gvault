@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/gvault/gvault/internal/domain"
+	"github.com/gvault/gvault/internal/kube"
+	"github.com/gvault/gvault/internal/provider"
 	"github.com/gvault/gvault/internal/provider/nvidia"
 )
 
@@ -19,6 +21,60 @@ func TestPrerequisitesFailClosed(t *testing.T) {
 	}
 }
 
+func TestLiveCaptureRestoreWithFakeKube(t *testing.T) {
+	fk := kube.NewFakeAPI()
+	fk.ReadyOnGet = true
+	p := nvidia.New(true).WithKubeClient(fk)
+	ctx := context.Background()
+	if err := p.CheckPrerequisites(ctx, "cluster-1"); err != nil {
+		t.Fatal(err)
+	}
+	ref, err := p.RequestCapture(ctx, provider.CaptureRequest{
+		SnapshotID: "snap-1", Name: "snap-1", ClusterID: "cluster-1",
+		Namespace: "inference", SourcePodName: "pod-a", SourceContainerName: "main",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ref.Kind != "PodSnapshot" {
+		t.Fatalf("kind=%s", ref.Kind)
+	}
+	st, err := p.CaptureStatus(ctx, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Phase != domain.SnapshotReady {
+		t.Fatalf("phase=%s msg=%s", st.Phase, st.Message)
+	}
+	if st.GPUProduct == "" || st.ImageDigest == "" {
+		t.Fatalf("expected discovered metadata: %+v", st)
+	}
+
+	rref, err := p.RequestRestore(ctx, provider.RestoreRequest{
+		SnapshotID: "snap-1", ClusterID: "cluster-1", Namespace: "inference",
+		PodName: "restored-1", TargetNodeName: "gpu-b",
+		Snapshot: domain.SnapshotInfo{
+			Status: domain.SnapshotReady, ClusterID: "cluster-1", Namespace: "inference",
+			GPUProduct: st.GPUProduct, DriverVersion: st.DriverVersion,
+			Architecture: "amd64", ImageDigest: st.ImageDigest,
+		},
+		ProviderRef: ref,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rst, err := p.RestoreStatus(ctx, rref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rst.Phase != domain.OperationSucceeded {
+		t.Fatalf("restore phase=%s", rst.Phase)
+	}
+	if err := p.RequestDelete(ctx, ref); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestManifestShape(t *testing.T) {
 	m := nvidia.BuildPodSnapshotManifest("inference", "snap1", "pod-a", "uid-1", "main")
 	if m["apiVersion"] != nvidia.APIGroupVersion {
@@ -27,7 +83,7 @@ func TestManifestShape(t *testing.T) {
 	spec := m["spec"].(map[string]any)
 	src := spec["source"].(map[string]any)
 	podRef := src["podRef"].(map[string]any)
-	containers := podRef["containers"].([]string)
+	containers := podRef["containers"].([]any)
 	if containers[0] != "main" || podRef["uid"] != "uid-1" {
 		t.Fatalf("podRef=%v", podRef)
 	}

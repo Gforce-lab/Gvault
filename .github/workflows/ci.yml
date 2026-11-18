@@ -34,8 +34,12 @@ jobs:
     env:
       DATABASE_URL: postgres://vault:vault@localhost:5432/gvault?sslmode=disable
       DEV_AUTH_BYPASS: "true"
-      PROVIDER: fake
+      PROVIDER: nvidia-snapshot
+      ENABLE_NVIDIA_PROVIDER: "true"
+      # Integration tests construct the in-process harness directly; not a product path.
+      ALLOW_TEST_PROVIDER: "true"
       PRODUCT_NAME: Gvault
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7

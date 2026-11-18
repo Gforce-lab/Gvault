@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — NVIDIA-first Phase 1
+
+- Product default is `PROVIDER=nvidia-snapshot`; Fake is CI harness only (`ALLOW_TEST_PROVIDER`)
+- Documented storage model (`docs/storage.md`) and hard stop-limits (`docs/scope.md`); AMD out of scope
+- Live Kubernetes client for NVIDIA; probes; audits; OIDC/namespace authz; kustomize; expanded `gvaultctl`
+- S3/export remains fail-closed until upstream pin verifies export
+
+
 ## 0.1.0-beta.1 — 2026-11-17
 
 First public **beta** of **Gvault**.
@@ -19,9 +27,9 @@ First public **beta** of **Gvault**.
 ### Explicit beta limitations
 
 - Default provider is FakeProvider (simulated READY — not a physical GPU checkpoint)
-- Live NVIDIA kube client not wired; real GPU A→B restore requires a cluster (see `docs/gpu-setup.md`)
-- CRD bridge is in-process (not a full controller-runtime manager / leader election yet)
-- Auth is API-key / dev bypass (OIDC deferred)
+- Live NVIDIA path requires kube client + GPU cluster (see `docs/gpu-setup.md`); without them prerequisites stay SKIPPED
+- CRD bridge uses MemoryStore + manager loop (full controller-runtime/envtest still later)
+- Auth is API-key / optional OIDC HS256 / dev bypass
 
 ### Upgrade notes
 

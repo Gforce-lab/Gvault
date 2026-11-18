@@ -52,4 +52,6 @@ type RestoreRequest struct {
 	IdempotencyKey string
 	RequestedBy    string
 	RequestID      string
+	// ProbeEndpoint is an optional post-restore HTTP health/inference check URL.
+	ProbeEndpoint string
 }

@@ -1,15 +1,25 @@
 # Roadmap
 
-## Shipped in 0.1.0-beta.1
+## Phase 1 — NVIDIA only (current stop)
 
-Milestones 1–5 on the FakeProvider / dry-run path (see [implementation-status.md](implementation-status.md)).
+See [scope.md](scope.md) and [storage.md](storage.md).
 
-## After beta
+- [x] Control plane API + Postgres catalog (metadata/refs only)
+- [x] NVIDIA Snapshot **v0.3.0** adapter + dry-run + live kube wiring
+- [x] Compatibility, restore probe hook, authz, CLI, UI
+- [ ] Measured GPU A → B restore on real hardware (promote e2e out of SKIPPED)
+- [ ] Production JWKS OIDC
+- [ ] controller-runtime + envtest replacing MemoryStore
 
-1. Wire live Kubernetes client for NVIDIA Snapshot v0.3.0 on a real GPU cluster
-2. Replace in-memory CRD store with controller-runtime manager + leader election
-3. OIDC auth and namespace RBAC
-4. Measured GPU A → GPU B restore + inference probe (promote out of SKIPPED)
-5. Verified S3/export only after upstream pin supports it
+**Do not start AMD until Phase 1 exit criteria pass.**
 
-Do not advertise real GPU restore until hardware acceptance criteria pass.
+## Phase 2 — after NVIDIA proven
+
+1. AMD GPU provider (separate package + pin + compatibility matrix)
+2. Verified object-store export if/when upstream pins support it
+3. Additional vendors only behind the same `CheckpointProvider` interface
+
+## Explicit non-goals (still)
+
+- Storing checkpoint bytes in Postgres or HTTP
+- Advertising READY without provider evidence

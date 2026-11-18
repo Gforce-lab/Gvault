@@ -29,9 +29,10 @@ async function refreshOverview() {
   try {
     const o = await api("/api/v1/overview");
     const el = $("#simBanner");
-    el.textContent = o.simulated
-      ? `BETA ${o.version || ""} · SIMULATED · provider=${o.provider} · ready=${o.readyCount}/${o.snapshotCount}`
-      : `BETA ${o.version || ""} · LIVE PATH · provider=${o.provider}`;
+    const live = o.provider === "nvidia-snapshot" && !o.simulated;
+    el.textContent = live
+      ? `Phase 1 · NVIDIA ${o.nvidiaPinned || "v0.3.0"} · provider=${o.provider} · ready=${o.readyCount}/${o.snapshotCount}`
+      : `Phase 1 · provider=${o.provider} · ${o.simulated ? "non-product harness" : "nvidia"} · ready=${o.readyCount}/${o.snapshotCount}`;
     el.classList.toggle("warn", !!o.simulated);
   } catch (e) {
     $("#simBanner").textContent = "API unreachable — start make run-api";
@@ -43,13 +44,13 @@ async function refreshCatalog() {
   const data = await api("/api/v1/snapshots");
   const root = $("#catalog");
   if (!data.items || !data.items.length) {
-    root.textContent = "No snapshots yet.";
+    root.textContent = "No snapshots yet. Capture requires a live NVIDIA cluster (or dry-run manifests below).";
     return;
   }
   root.innerHTML = data.items.map((s) => `
     <div class="snap-row">
       <div>
-        <div><strong>${s.name}</strong> ${badge(s.status)} ${s.simulated ? '<span class="badge">fake</span>' : ''}</div>
+        <div><strong>${s.name}</strong> ${badge(s.status)} <span class="badge">${s.provider || ""}</span></div>
         <div>${s.id}</div>
         <div>${s.hardware?.gpuProduct || ""} · ${s.namespace}</div>
         <div class="snap-actions">
@@ -91,7 +92,7 @@ async function refreshOps() {
     return;
   }
   root.innerHTML = data.items.map((o) =>
-    `${badge(o.status)} ${o.type} ${o.id} → snap ${o.snapshotId}${o.simulated ? " · simulated" : ""}`
+    `${badge(o.status)} ${o.type} ${o.id} → snap ${o.snapshotId}`
   ).join("\n");
 }
 
@@ -120,7 +121,7 @@ $("#captureForm").addEventListener("submit", async (e) => {
     name: fd.get("name"),
     clusterId: fd.get("clusterId"),
     namespace: fd.get("namespace"),
-    provider: "fake",
+    provider: "nvidia-snapshot",
     source: { podName: fd.get("podName"), containerName: fd.get("containerName") },
   };
   try {
@@ -135,6 +136,24 @@ $("#captureForm").addEventListener("submit", async (e) => {
     await pollOperation(accepted.operationId, $("#captureOut"));
     setStep(3);
     await refreshAll();
+  } catch (err) {
+    $("#captureOut").textContent = JSON.stringify(err.body || { error: err.message }, null, 2);
+  }
+});
+
+$("#dryRunBtn").addEventListener("click", async () => {
+  const fd = new FormData($("#captureForm"));
+  try {
+    const res = await api("/api/v1/providers/nvidia/dry-run", {
+      method: "POST",
+      body: JSON.stringify({
+        namespace: fd.get("namespace"),
+        name: fd.get("name"),
+        podName: fd.get("podName"),
+        containerName: fd.get("containerName"),
+      }),
+    });
+    $("#captureOut").textContent = JSON.stringify(res, null, 2);
   } catch (err) {
     $("#captureOut").textContent = JSON.stringify(err.body || { error: err.message }, null, 2);
   }
@@ -167,16 +186,19 @@ $("#restoreForm").addEventListener("submit", async (e) => {
   setStep(4);
   const fd = new FormData(e.target);
   const id = fd.get("snapshotId");
+  const probe = (fd.get("probeEndpoint") || "").toString().trim();
+  const body = {
+    targetClusterId: fd.get("targetClusterId"),
+    namespace: fd.get("namespace"),
+    podName: fd.get("podName"),
+    targetNodeName: fd.get("targetNodeName"),
+  };
+  if (probe) body.probeEndpoint = probe;
   try {
     const accepted = await api(`/api/v1/snapshots/${id}/restore`, {
       method: "POST",
       headers: { "Idempotency-Key": `ui-restore-${Date.now()}` },
-      body: JSON.stringify({
-        targetClusterId: fd.get("targetClusterId"),
-        namespace: fd.get("namespace"),
-        podName: fd.get("podName"),
-        targetNodeName: fd.get("targetNodeName"),
-      }),
+      body: JSON.stringify(body),
     });
     $("#restoreOut").textContent = JSON.stringify(accepted, null, 2);
     await pollOperation(accepted.operationId, $("#restoreOut"));

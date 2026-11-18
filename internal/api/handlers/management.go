@@ -7,6 +7,7 @@ import (
 	"github.com/gvault/gvault/internal/api/dto"
 	"github.com/gvault/gvault/internal/api/middleware"
 	"github.com/gvault/gvault/internal/domain"
+	"github.com/gvault/gvault/internal/export"
 	"github.com/gvault/gvault/internal/provider/nvidia"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/version"
@@ -103,16 +104,19 @@ func (a *API) Overview(c *gin.Context) {
 		a.Metrics.SetReady(int64(ready))
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"product": "Gvault",
+		"product":          "Gvault",
 		"version":          version.Version,
 		"channel":          "beta",
+		"phase":            "1-nvidia-only",
 		"provider":         a.Provider.Name(),
-		"simulated":        a.Provider.Name() == "fake",
+		"simulated":        a.Provider.Name() != "nvidia-snapshot",
 		"snapshotCount":    len(snaps),
 		"readyCount":       ready,
 		"recentOperations": len(ops),
 		"nvidiaPinned":     nvidia.PinnedRelease,
-		"note":             "FakeProvider READY is simulated — not a physical GPU checkpoint",
+		"amd":              "out-of-scope",
+		"storage":          "postgres-catalog-metadata-only; checkpoint-bytes-on-nvidia-rwx",
+		"note":             "Phase 1 is NVIDIA GPU only. Catalog stores metadata/refs — never checkpoint bytes. See docs/storage.md and docs/scope.md.",
 	})
 }
 
@@ -136,6 +140,42 @@ func (a *API) NVIDIADryRun(c *gin.Context) {
 	})
 }
 
+func (a *API) ListAudits(c *gin.Context) {
+	items, err := a.Svc.ListAudits(c.Request.Context(), queryInt(c, "limit", 50))
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	out := make([]gin.H, 0, len(items))
+	for _, e := range items {
+		out = append(out, gin.H{
+			"id": e.ID, "actor": e.Actor, "action": e.Action,
+			"resourceType": e.ResourceType, "resourceId": e.ResourceID,
+			"decision": e.Decision, "requestId": e.RequestID,
+			"timestamp": e.Timestamp, "attributes": e.Attributes,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"items": out})
+}
+
+func (a *API) ExportS3(c *gin.Context) {
+	var body struct {
+		SnapshotID string `json:"snapshotId" binding:"required"`
+		Bucket     string `json:"bucket" binding:"required"`
+		Key        string `json:"key" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeErr(c, domain.NewAppError(domain.CodeValidation, err.Error()))
+		return
+	}
+	ex := export.S3Exporter{Enabled: a.EnableS3Export}
+	if err := ex.Export(c.Request.Context(), body.SnapshotID, body.Bucket, body.Key); err != nil {
+		writeErr(c, err)
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"status": "accepted"})
+}
+
 // DeleteSnapshotGuarded uses retention/active-restore safety (Milestone 5).
 func (a *API) DeleteSnapshotGuarded(c *gin.Context) {
 	op, err := a.Svc.GuardedDelete(
@@ -151,6 +191,6 @@ func (a *API) DeleteSnapshotGuarded(c *gin.Context) {
 	}
 	c.JSON(http.StatusAccepted, dto.AcceptedBody{
 		SnapshotID: c.Param("id"), OperationID: op.ID, Status: string(op.Status),
-		Note: "Guarded deletion — FakeProvider simulated cleanup",
+		Note: "Guarded deletion — provider lifecycle + catalog DELETED",
 	})
 }

@@ -37,7 +37,10 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := config.Config{HTTPAddr: ":0", DevAuthBypass: true, Provider: "fake", FakeProviderStep: 30 * time.Millisecond, PollInterval: 20 * time.Millisecond}
+	cfg := config.Config{
+		HTTPAddr: ":0", DevAuthBypass: true, Provider: "fake", AllowTestProvider: true,
+		FakeProviderStep: 30 * time.Millisecond, PollInterval: 20 * time.Millisecond,
+	}
 	fp := fake.New(cfg.FakeProviderStep)
 	svc := service.NewSnapshotService(db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db), fp, slog.Default(), cfg.PollInterval)
 	h := &handlers.API{DB: db, Svc: svc, Provider: fp}

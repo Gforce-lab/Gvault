@@ -80,3 +80,48 @@
 - **Status:** Accepted
 - **Decision:** Ship all plan milestones on the FakeProvider + NVIDIA dry-run surface as **beta**, with explicit limitations (no live GPU READY claims, in-memory CRD bridge, API-key auth).
 - **Consequences:** Version embedded in binaries; CHANGELOG + release notes required; post-beta work focuses on live kube client and measured GPU restore.
+
+---
+
+## ADR-009 — Live kube behind NVIDIA flag only
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Wire `internal/kube` into `nvidia-snapshot` only. Default `PROVIDER=fake` never talks to the cluster. NVIDIA without a live client stays fail-closed (prerequisites SKIPPED, not PASSED).
+- **Consequences:** FakeProvider CI/UI regressions are impossible from kube wiring; live path unit-tested with `kube.FakeAPI`.
+
+---
+
+## ADR-010 — OIDC + namespace allowlist additive to API key
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Keep API-key auth. When `OIDC_ISSUER`/`OIDC_AUDIENCE`/`OIDC_CLIENT_SECRET` are set, accept Bearer HS256 JWTs. `ALLOWED_NAMESPACES` gates capture/restore when non-empty.
+- **Consequences:** Staging can use OIDC without breaking existing API-key clients; production should replace HS256 with JWKS later.
+
+---
+
+## ADR-011 — S3/export fail-closed until pin verifies
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Expose `/api/v1/export/s3` but always refuse until the pinned NVIDIA Snapshot release documents a verified export path.
+- **Consequences:** No accidental READY export claims; roadmap item stays explicit.
+
+---
+
+## ADR-012 — NVIDIA-first; remove Fake as a product concept
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** Phase 1 product provider is **`nvidia-snapshot` only**. Default `PROVIDER=nvidia-snapshot`. The in-process `fake` package remains a **CI harness** behind `ALLOW_TEST_PROVIDER=true` and must not be documented as a GPU provider. **AMD is explicitly out of scope** until Phase 1 exit criteria in `docs/scope.md`.
+- **Consequences:** Local demos without kube are dry-run / fail-closed. Catalog storage rules live in `docs/storage.md` (metadata + opaque refs only).
+
+---
+
+## ADR-013 — Catalog vs artifact bytes
+
+- **Date:** 2026-11-18
+- **Status:** Accepted
+- **Decision:** PostgreSQL stores searchable metadata, operations, audit, and opaque artifact locators. Checkpoint bytes remain on NVIDIA Snapshot / RWX. The API never accepts or returns raw checkpoint payloads.
+- **Consequences:** Clear operator mental model; safer multi-tenant boundaries; AMD later adds a new provider package without changing this split.
