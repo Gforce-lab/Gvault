@@ -11,12 +11,12 @@ import (
 
 // FakeAPI is an in-memory ClusterAPI for unit tests (not a real GPU path).
 type FakeAPI struct {
-	mu           sync.Mutex
-	snapshots    map[string]*unstructured.Unstructured
-	pods         map[string]*unstructured.Unstructured
-	ReadyOnGet   bool
-	FailCreate   bool
-	uidCounter   int
+	mu         sync.Mutex
+	snapshots  map[string]*unstructured.Unstructured
+	pods       map[string]*unstructured.Unstructured
+	ReadyOnGet bool
+	FailCreate bool
+	uidCounter int
 }
 
 func NewFakeAPI() *FakeAPI {
@@ -96,6 +96,10 @@ func (f *FakeAPI) GetPod(_ context.Context, namespace, name string) (*unstructur
 	if f.ReadyOnGet {
 		_ = unstructured.SetNestedField(out.Object, "Running", "status", "phase")
 		_ = unstructured.SetNestedField(out.Object, "gpu-node-b", "spec", "nodeName")
+		_ = unstructured.SetNestedSlice(out.Object, []any{
+			map[string]any{"type": "nvidia.com/Restored", "status": "True", "reason": "RestoreSucceeded"},
+			map[string]any{"type": "Ready", "status": "True"},
+		}, "status", "conditions")
 	}
 	return out, nil
 }

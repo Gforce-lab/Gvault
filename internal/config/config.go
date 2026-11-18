@@ -31,9 +31,14 @@ type Config struct {
 	EnableS3Export       bool
 	LeaderElection       bool
 	ProbeDefaultURL      string
+	RestoreTimeout       time.Duration
 }
 
 func Load() (Config, error) {
+	restoreSeconds, err := strconv.Atoi(getenv("RESTORE_TIMEOUT_SECONDS", "300"))
+	if err != nil || restoreSeconds < 1 || restoreSeconds > 3600 {
+		return Config{}, fmt.Errorf("RESTORE_TIMEOUT_SECONDS must be an integer between 1 and 3600")
+	}
 	cfg := Config{
 		HTTPAddr:             getenv("HTTP_ADDR", ":8080"),
 		DatabaseURL:          getenv("DATABASE_URL", "postgres://vault:vault@localhost:5433/gvault?sslmode=disable"),
@@ -55,6 +60,7 @@ func Load() (Config, error) {
 		EnableS3Export:       getenvBool("ENABLE_S3_EXPORT", false),
 		LeaderElection:       getenvBool("LEADER_ELECTION", false),
 		ProbeDefaultURL:      os.Getenv("PROBE_DEFAULT_URL"),
+		RestoreTimeout:       time.Duration(restoreSeconds) * time.Second,
 	}
 	switch cfg.Provider {
 	case "nvidia-snapshot":

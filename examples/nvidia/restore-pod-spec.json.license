@@ -1,0 +1,4 @@
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
+Derived from ai-dynamo/snapshot v0.3.0 docs/guides/vllm/restore/1-gpu.yaml.

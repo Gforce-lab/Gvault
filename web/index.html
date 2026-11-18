@@ -87,7 +87,24 @@
           <label>Namespace <input name="namespace" value="inference" required /></label>
           <label>Pod name <input name="podName" value="llama-vllm-restored-1" required /></label>
           <label>Node (optional) <input name="targetNodeName" value="gpu-node-b" /></label>
-          <label>Probe URL (optional) <input name="probeEndpoint" placeholder="http://…/health" /></label>
+          <label>Target GPU product <input name="gpuProduct" placeholder="required for NVIDIA preflight" /></label>
+          <label>Target driver <input name="driverVersion" /></label>
+          <label>Target CPU architecture <input name="architecture" placeholder="amd64 or arm64" /></label>
+          <label>Image digest <input name="imageDigest" placeholder="sha256:…" /></label>
+          <label>Workload Pod spec (JSON, required for NVIDIA)
+            <textarea name="restorePodSpec" rows="6" spellcheck="false" placeholder='{"containers":[…],"volumes":[…]}'></textarea>
+          </label>
+          <label>Verify generation
+            <select name="inferenceProtocol">
+              <option value="">Provider and Pod readiness only</option>
+              <option value="openai">OpenAI completions</option>
+              <option value="snapshot-vllm">Snapshot vLLM guide (/generate)</option>
+            </select>
+          </label>
+          <label>Served model (required for OpenAI) <input name="inferenceModel" /></label>
+          <label>Inference port <input name="inferencePort" type="number" min="1" max="65535" value="8000" /></label>
+          <label>Inference timeout (seconds) <input name="inferenceTimeout" type="number" min="1" max="300" value="60" /></label>
+          <label>Health URL (optional; use instead of generation) <input name="probeEndpoint" placeholder="http://…/health" /></label>
           <button type="submit">Submit restore</button>
         </form>
         <pre id="restoreOut" class="out"></pre>

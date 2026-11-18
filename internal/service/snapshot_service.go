@@ -17,17 +17,18 @@ import (
 
 // SnapshotService owns capture/list/get/delete and async status polling.
 type SnapshotService struct {
-	db       *sql.DB
-	snaps    *postgres.SnapshotRepo
-	ops      *postgres.OperationRepo
-	audits   *postgres.AuditRepo
-	tags     *postgres.TagRepo
-	provider provider.CheckpointProvider
-	metrics  *telemetry.Metrics
-	log      *slog.Logger
-	poll     time.Duration
-	nsPolicy *authz.NamespacePolicy
-	prober   probe.Prober
+	db             *sql.DB
+	snaps          *postgres.SnapshotRepo
+	ops            *postgres.OperationRepo
+	audits         *postgres.AuditRepo
+	tags           *postgres.TagRepo
+	provider       provider.CheckpointProvider
+	metrics        *telemetry.Metrics
+	log            *slog.Logger
+	poll           time.Duration
+	nsPolicy       *authz.NamespacePolicy
+	prober         probe.Prober
+	restoreTimeout time.Duration
 
 	mu       sync.Mutex
 	capRefs  map[string]provider.ProviderRef // operationID -> ref
@@ -46,19 +47,32 @@ func NewSnapshotService(
 	if poll <= 0 {
 		poll = 100 * time.Millisecond
 	}
-	return &SnapshotService{
-		db:       db,
-		snaps:    snaps,
-		ops:      ops,
-		audits:   audits,
-		tags:     postgres.NewTagRepo(db),
-		provider: p,
-		log:      log,
-		poll:     poll,
-		prober:   probe.FakeProber{},
-		capRefs:  map[string]provider.ProviderRef{},
-		restRefs: map[string]provider.ProviderRef{},
+	var prober probe.Prober = probe.HTTPProber{}
+	if p.Name() == "fake" {
+		prober = probe.FakeProber{}
 	}
+	return &SnapshotService{
+		db:             db,
+		snaps:          snaps,
+		ops:            ops,
+		audits:         audits,
+		tags:           postgres.NewTagRepo(db),
+		provider:       p,
+		log:            log,
+		poll:           poll,
+		prober:         prober,
+		restoreTimeout: 5 * time.Minute,
+		capRefs:        map[string]provider.ProviderRef{},
+		restRefs:       map[string]provider.ProviderRef{},
+	}
+}
+
+// WithRestoreTimeout bounds provider execution and application verification together.
+func (s *SnapshotService) WithRestoreTimeout(timeout time.Duration) *SnapshotService {
+	if timeout > 0 {
+		s.restoreTimeout = timeout
+	}
+	return s
 }
 
 // WithMetrics attaches optional Prometheus metrics (beta).

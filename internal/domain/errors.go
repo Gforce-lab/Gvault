@@ -20,6 +20,8 @@ const (
 	CodeImageDigestMismatch ErrorCode = "IMAGE_DIGEST_MISMATCH"
 	CodeSnapshotNotReady    ErrorCode = "SNAPSHOT_NOT_READY"
 	CodeMissingMetadata     ErrorCode = "MISSING_METADATA"
+	CodeRestoreTimeout      ErrorCode = "RESTORE_TIMEOUT"
+	CodeProbeFailed         ErrorCode = "RESTORE_PROBE_FAILED"
 )
 
 // AppError is a typed application error safe to map to HTTP responses.
