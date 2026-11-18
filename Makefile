@@ -26,6 +26,17 @@ test-integration:
 test-gpu:
 	$(GO) test ./tests/e2e/... -count=1 -tags=gpu
 
+# Same gates GitHub Actions runs on every MR / merge queue entry.
+.PHONY: test-mr
+test-mr: vet
+	@unformatted="$$(gofmt -l .)"; if [ -n "$$unformatted" ]; then echo "$$unformatted"; exit 1; fi
+	$(GO) test ./... -count=1 -race -timeout=10m
+	$(GO) test ./tests/integration/... -count=1 -tags=integration -timeout=10m
+	$(GO) test ./tests/e2e/... -count=1 -tags=gpu -timeout=2m
+	$(MAKE) build
+	./$(BIN_DIR)/gvaultctl version --local >/dev/null
+
+
 VERSION ?= $(shell cat VERSION 2>/dev/null || echo 0.1.0-beta.1)
 LDFLAGS := -X github.com/gvault/gvault/internal/version.Version=$(VERSION)
 
