@@ -37,11 +37,20 @@ body {
   padding: 1.5rem 2rem 1rem; gap: 1rem; flex-wrap: wrap;
   animation: rise .6s ease both;
 }
+.brand-row {
+  display: flex; align-items: center; gap: .85rem;
+}
+.brand-mark {
+  width: clamp(2.6rem, 6vw, 3.75rem); height: auto;
+  border-radius: .35rem;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(157, 196, 178, 0.25);
+}
 .brand {
   font-size: clamp(2.4rem, 5vw, 3.6rem); font-weight: 700; letter-spacing: -0.04em;
   margin: 0; line-height: 1;
 }
-.tagline { margin: .35rem 0 0; color: var(--muted); }
+.tagline { margin: .45rem 0 0; color: var(--muted); }
 .beta {
   font-family: var(--mono); font-size: .75rem; color: var(--accent-2);
   border: 1px solid rgba(240,180,41,.35); padding: .1rem .4rem;
