@@ -104,16 +104,19 @@ func (a *API) Overview(c *gin.Context) {
 		a.Metrics.SetReady(int64(ready))
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"product": "Gvault",
+		"product":          "Gvault",
 		"version":          version.Version,
 		"channel":          "beta",
+		"phase":            "1-nvidia-only",
 		"provider":         a.Provider.Name(),
-		"simulated":        a.Provider.Name() == "fake",
+		"simulated":        a.Provider.Name() != "nvidia-snapshot",
 		"snapshotCount":    len(snaps),
 		"readyCount":       ready,
 		"recentOperations": len(ops),
 		"nvidiaPinned":     nvidia.PinnedRelease,
-		"note":             "FakeProvider READY is simulated — not a physical GPU checkpoint",
+		"amd":              "out-of-scope",
+		"storage":          "postgres-catalog-metadata-only; checkpoint-bytes-on-nvidia-rwx",
+		"note":             "Phase 1 is NVIDIA GPU only. Catalog stores metadata/refs — never checkpoint bytes. See docs/storage.md and docs/scope.md.",
 	})
 }
 
@@ -188,6 +191,6 @@ func (a *API) DeleteSnapshotGuarded(c *gin.Context) {
 	}
 	c.JSON(http.StatusAccepted, dto.AcceptedBody{
 		SnapshotID: c.Param("id"), OperationID: op.ID, Status: string(op.Status),
-		Note: "Guarded deletion — FakeProvider simulated cleanup",
+		Note: "Guarded deletion — provider lifecycle + catalog DELETED",
 	})
 }

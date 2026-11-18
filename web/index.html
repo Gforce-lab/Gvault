@@ -19,15 +19,18 @@
         <img class="brand-mark" src="/assets/logo.png" width="64" height="66" alt="Gvault logo" />
         <p class="brand">Gvault</p>
       </div>
-      <p class="tagline">GPU snapshot registry &amp; lifecycle control · <span class="beta">0.1.0-beta</span></p>
+      <p class="tagline">NVIDIA GPU snapshot registry &amp; lifecycle · <span class="beta">Phase 1</span></p>
     </div>
     <div class="status-pill" id="simBanner">Loading…</div>
   </header>
 
   <main>
     <section class="hero-flow">
-      <h1>See the capture → restore flow</h1>
-      <p class="lede">Drive the FakeProvider path end-to-end. READY means simulated state — never a physical GPU checkpoint.</p>
+      <h1>NVIDIA capture → restore control plane</h1>
+      <p class="lede">
+        Phase 1 targets <strong>NVIDIA Snapshot v0.3.0</strong> only. Catalog stores metadata and opaque refs —
+        checkpoint bytes stay on the NVIDIA RWX path. AMD is out of scope. Without a live cluster, capture stays fail-closed.
+      </p>
       <ol class="steps" id="flowSteps">
         <li data-step="1" class="active">Capture</li>
         <li data-step="2">Poll operation</li>
@@ -40,13 +43,14 @@
       <div class="panel">
         <h2>Capture snapshot</h2>
         <form id="captureForm">
-          <label>Name <input name="name" value="llama8b-demo" required /></label>
-          <label>Cluster <input name="clusterId" value="dev-gpu-cluster" required /></label>
+          <label>Name <input name="name" value="llama8b-nvidia" required /></label>
+          <label>Cluster <input name="clusterId" value="gpu-cluster-a" required /></label>
           <label>Namespace <input name="namespace" value="inference" required /></label>
           <label>Pod <input name="podName" value="llama-vllm-0" required /></label>
           <label>Container <input name="containerName" value="main" required /></label>
           <button type="submit">Submit capture</button>
         </form>
+        <button type="button" id="dryRunBtn" class="secondary">NVIDIA dry-run manifests</button>
         <pre id="captureOut" class="out"></pre>
       </div>
 
@@ -65,11 +69,11 @@
         <h2>Compatibility preflight</h2>
         <form id="compatForm">
           <label>Snapshot ID <input name="snapshotId" id="compatSnap" required /></label>
-          <label>Target cluster <input name="targetClusterId" value="dev-gpu-cluster" required /></label>
-          <label>GPU product <input name="gpuProduct" value="NVIDIA-Fake-A100-80GB" /></label>
-          <label>Driver <input name="driverVersion" value="550.00.fake" /></label>
+          <label>Target cluster <input name="targetClusterId" value="gpu-cluster-a" required /></label>
+          <label>GPU product <input name="gpuProduct" value="NVIDIA-A100-SXM4-80GB" /></label>
+          <label>Driver <input name="driverVersion" value="550.54.15" /></label>
           <label>Arch <input name="architecture" value="amd64" /></label>
-          <label>Image digest <input name="imageDigest" value="sha256:fake-image-digest" /></label>
+          <label>Image digest <input name="imageDigest" value="sha256:replace-with-pinned-digest" /></label>
           <button type="submit">Check</button>
         </form>
         <pre id="compatOut" class="out"></pre>
@@ -79,10 +83,11 @@
         <h2>Restore</h2>
         <form id="restoreForm">
           <label>Snapshot ID <input name="snapshotId" id="restoreSnap" required /></label>
-          <label>Target cluster <input name="targetClusterId" value="dev-gpu-cluster" required /></label>
+          <label>Target cluster <input name="targetClusterId" value="gpu-cluster-a" required /></label>
           <label>Namespace <input name="namespace" value="inference" required /></label>
           <label>Pod name <input name="podName" value="llama-vllm-restored-1" required /></label>
-          <label>Node (optional) <input name="targetNodeName" value="fake-node-b" /></label>
+          <label>Node (optional) <input name="targetNodeName" value="gpu-node-b" /></label>
+          <label>Probe URL (optional) <input name="probeEndpoint" placeholder="http://…/health" /></label>
           <button type="submit">Submit restore</button>
         </form>
         <pre id="restoreOut" class="out"></pre>
@@ -96,7 +101,7 @@
   </main>
 
   <footer>
-    <span>Gvault · FakeProvider by default · NVIDIA Snapshot pin documented in docs/compatibility.md</span>
+    <span>Gvault · Phase 1 NVIDIA only · storage: docs/storage.md · stop-limits: docs/scope.md</span>
   </footer>
   <script src="/assets/app.js"></script>
 </body>

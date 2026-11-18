@@ -23,9 +23,9 @@ spec:
               name: http
           env:
             - name: PROVIDER
-              value: fake
+              value: nvidia-snapshot
             - name: ENABLE_NVIDIA_PROVIDER
-              value: "false"
+              value: "true"
             - name: DEV_AUTH_BYPASS
               value: "false"
             - name: PRODUCT_NAME

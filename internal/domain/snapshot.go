@@ -75,7 +75,7 @@ type CaptureRequest struct {
 	IdempotencyKey      string
 	RequestedBy         string
 	RequestID           string
-	// Optional discovered metadata (FakeProvider fills defaults if empty).
+	// Optional discovered metadata; NVIDIA provider should discover authoritative values from the cluster.
 	ImageDigest   string
 	GPUProduct    string
 	DriverVersion string

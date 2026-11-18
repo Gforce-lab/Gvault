@@ -98,7 +98,7 @@ func cmdSnapshot(base string) {
 		printJSON(mustDo(http.MethodGet, base+"/api/v1/snapshots/"+os.Args[3], nil, ""))
 	case "create":
 		need(8)
-		provider := env("GVAULT_PROVIDER", "fake")
+		provider := env("GVAULT_PROVIDER", "nvidia-snapshot")
 		body := map[string]any{
 			"name": os.Args[3], "clusterId": os.Args[4], "namespace": os.Args[5],
 			"provider": provider,
@@ -126,10 +126,10 @@ func cmdSnapshot(base string) {
 		need(5)
 		body := map[string]any{
 			"targetClusterId": os.Args[4],
-			"gpuProduct":      env("GVAULT_GPU", "NVIDIA-Fake-A100-80GB"),
-			"driverVersion":   env("GVAULT_DRIVER", "550.00.fake"),
+			"gpuProduct":      env("GVAULT_GPU", "NVIDIA-A100-SXM4-80GB"),
+			"driverVersion":   env("GVAULT_DRIVER", "550.54.15"),
 			"architecture":    env("GVAULT_ARCH", "amd64"),
-			"imageDigest":     env("GVAULT_DIGEST", "sha256:fake-image-digest"),
+			"imageDigest":     env("GVAULT_DIGEST", "sha256:replace-with-pinned-digest"),
 		}
 		if len(os.Args) >= 6 {
 			body["targetNodeName"] = os.Args[5]
@@ -233,8 +233,8 @@ func cmdCRD(base string) {
 		body := map[string]any{
 			"name": os.Args[3], "namespace": os.Args[4],
 			"podName": os.Args[5], "containerName": os.Args[6],
-			"provider":  env("GVAULT_PROVIDER", "fake"),
-			"clusterId": env("GVAULT_CLUSTER", "dev"),
+			"provider":  env("GVAULT_PROVIDER", "nvidia-snapshot"),
+			"clusterId": env("GVAULT_CLUSTER", "gpu-cluster-a"),
 		}
 		printJSON(mustDo(http.MethodPost, base+"/api/v1/crds/vaultsnapshots", body, ""))
 	case "reconcile":
@@ -341,16 +341,16 @@ Environment:
   GVAULT_API                 API base URL (default http://localhost:8080)
   GVAULT_API_KEY             sent as X-API-Key when set
   GVAULT_BEARER_TOKEN        sent as Authorization: Bearer when set
-  GVAULT_PROVIDER            provider for create/crd (default fake)
+  GVAULT_PROVIDER            provider for create/crd (default nvidia-snapshot)
   GVAULT_NAMESPACE           filter for snapshot list
-  GVAULT_CLUSTER             clusterId for CRD create (default dev)
+  GVAULT_CLUSTER             clusterId for CRD create (default gpu-cluster-a)
   GVAULT_GPU / GVAULT_DRIVER / GVAULT_ARCH / GVAULT_DIGEST
   GVAULT_PROBE_ENDPOINT      optional post-restore probe URL
   GVAULT_IDEMPOTENCY_KEY     override Idempotency-Key on mutations
   GVAULT_WAIT_TIMEOUT        wait timeout (default 30s)
   GVAULT_WAIT_POLL           wait poll interval (default 200ms)
 
-Note: FakeProvider READY/SUCCEEDED are simulated — not real GPU checkpoints.
+Phase 1: NVIDIA Snapshot only. AMD is out of scope. Catalog = metadata/refs only (docs/storage.md).
 `, cliVersion)
 }
 

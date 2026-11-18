@@ -5,4 +5,6 @@
 - Optional `ALLOWED_NAMESPACES` (comma-separated) restricts capture/restore to listed namespaces.
 - Audit events must not contain secrets, tokens, or checkpoint dumps (attributes are sanitized by construction).
 - No raw artifact download endpoints. `/api/v1/export/s3` is fail-closed until the pinned NVIDIA release verifies export.
-- Real GPU path requires least-privilege RBAC for API and controller service accounts (`config/rbac`).
+- Catalog stores metadata/refs only — never checkpoint bytes ([storage.md](storage.md)).
+- `ALLOW_TEST_PROVIDER` / `PROVIDER=fake` is CI-only; never enable in shared or production clusters.
+- Real NVIDIA path requires least-privilege RBAC for API and controller service accounts (`config/rbac`).

@@ -7,9 +7,9 @@ service:
   type: ClusterIP
   port: 8080
 env:
-  PROVIDER: fake
+  PROVIDER: nvidia-snapshot
   DEV_AUTH_BYPASS: "false"
-  ENABLE_NVIDIA_PROVIDER: "false"
+  ENABLE_NVIDIA_PROVIDER: "true"
   PRODUCT_NAME: Gvault
   ENABLE_S3_EXPORT: "false"
   LEADER_ELECTION: "true"

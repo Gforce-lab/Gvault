@@ -49,8 +49,14 @@ func main() {
 	}
 
 	var p provider.CheckpointProvider
+	var prober probe.Prober = probe.HTTPProber{}
 	switch cfg.Provider {
-	case "nvidia-snapshot":
+	case "fake":
+		// CI / ALLOW_TEST_PROVIDER only — not a product GPU path.
+		log.Warn("test harness provider enabled", "note", "not a real GPU provider; see docs/scope.md")
+		p = fake.New(cfg.FakeProviderStep)
+		prober = probe.FakeProber{}
+	default:
 		np := nvidia.New(cfg.EnableNVIDIAProvider)
 		kc, err := kube.MaybeFromEnv()
 		if err != nil {
@@ -61,16 +67,12 @@ func main() {
 			np.WithKubeClient(kc)
 			log.Info("nvidia provider wired to kubernetes client", "pinned", nvidia.PinnedRelease)
 		} else {
-			log.Warn("nvidia provider enabled but no kube client; prerequisites remain SKIPPED")
+			log.Warn("nvidia provider active but no kube client; capture/restore stay fail-closed until cluster is connected",
+				"pinned", nvidia.PinnedRelease,
+				"docs", "docs/gpu-setup.md",
+			)
 		}
 		p = np
-	default:
-		p = fake.New(cfg.FakeProviderStep)
-	}
-
-	var prober probe.Prober = probe.FakeProber{}
-	if cfg.Provider == "nvidia-snapshot" {
-		prober = probe.HTTPProber{}
 	}
 
 	metrics := telemetry.New()
@@ -85,7 +87,7 @@ func main() {
 	h := &handlers.API{
 		DB: db, Svc: svc, Provider: p, Metrics: metrics,
 		CRDStore: crdStore, Reconciler: controller.NewReconciler(crdStore, p),
-		StatusSync: &controller.StatusSync{Snaps: snaps},
+		StatusSync:     &controller.StatusSync{Snaps: snaps},
 		EnableS3Export: cfg.EnableS3Export,
 	}
 	router := api.NewRouter(cfg, log, h)
@@ -98,10 +100,11 @@ func main() {
 			"channel", "beta",
 			"addr", cfg.HTTPAddr,
 			"provider", p.Name(),
+			"phase", "1-nvidia-only",
+			"amd", "out-of-scope",
 			"ui", cfg.UIDir,
 			"oidc", cfg.OIDC().Enabled(),
 			"namespacePolicy", cfg.NamespacePolicy().Enabled(),
-			"note", "beta: FakeProvider default is simulated — not a real GPU checkpoint",
 		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("server", "error", err)

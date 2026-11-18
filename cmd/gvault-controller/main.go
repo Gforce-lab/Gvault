@@ -16,8 +16,8 @@ import (
 	"github.com/gvault/gvault/internal/provider/fake"
 )
 
-// Local GPU-free controller demo: reconciles in-memory VaultSnapshot CRDs via FakeProvider.
-// Manager adds leader-election-shaped loops; production can replace MemoryStore with controller-runtime.
+// Local controller demo uses the CI harness provider for GPU-free reconcile loops.
+// Product deployments use nvidia-snapshot against a live cluster (see docs/scope.md).
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	fp := fake.New(50 * time.Millisecond)

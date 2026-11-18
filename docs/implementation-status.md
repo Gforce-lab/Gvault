@@ -1,15 +1,16 @@
 # Implementation status — Gvault
 
-Last updated: 2026-11-17  
-**Release:** [0.1.0-beta.1](release-notes-0.1.0-beta.md)
+Last updated: 2026-11-18  
+**Release:** [0.1.0-beta.1](release-notes-0.1.0-beta.md) · **Phase:** 1 NVIDIA-only ([scope.md](scope.md))
 
 Project name: **Gvault** · Module: `github.com/gvault/gvault` · Binaries: `gvault-api`, `gvault-controller`, `gvaultctl`
 
-## Milestone checklist (beta complete)
+## Milestone checklist
 
-### Milestone 1 — Fake end-to-end API
+### Milestone 1 — Control plane API
 
-- [x] Gin API, Postgres, FakeProvider, OpenAPI, Compose, tests
+- [x] Gin API, Postgres catalog, OpenAPI, Compose, tests
+- [x] Product default `PROVIDER=nvidia-snapshot` (CI harness gated)
 
 ### Milestone 2 — Operator CRDs (GPU-free)
 

@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased — milestone hardening
+## Unreleased — NVIDIA-first Phase 1
 
-- Live Kubernetes client for `nvidia-snapshot` (`internal/kube`); FakeProvider unchanged
-- Post-restore inference/health probes; audit list API; namespace allowlist; OIDC Bearer (HS256 staging)
-- Controller manager with leader-election-shaped loop; kustomize base/overlays
-- S3/export endpoint remain fail-closed until upstream pin verifies export
+- Product default is `PROVIDER=nvidia-snapshot`; Fake is CI harness only (`ALLOW_TEST_PROVIDER`)
+- Documented storage model (`docs/storage.md`) and hard stop-limits (`docs/scope.md`); AMD out of scope
+- Live Kubernetes client for NVIDIA; probes; audits; OIDC/namespace authz; kustomize; expanded `gvaultctl`
+- S3/export remains fail-closed until upstream pin verifies export
+
 
 ## 0.1.0-beta.1 — 2026-11-17
 

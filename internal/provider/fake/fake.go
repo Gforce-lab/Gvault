@@ -11,8 +11,9 @@ import (
 	"github.com/gvault/gvault/internal/provider"
 )
 
-// Provider is a deterministic, GPU-free CheckpointProvider for local CI and demos.
-// READY/SUCCEEDED here means simulated application state — never a physical GPU restore.
+// Provider is a CI-only in-process harness (ALLOW_TEST_PROVIDER=true).
+// It is NOT a product GPU provider. Phase 1 product path is nvidia-snapshot only.
+// READY/SUCCEEDED here are synthetic and must never be advertised as physical GPU success.
 type Provider struct {
 	mu      sync.Mutex
 	step    time.Duration
