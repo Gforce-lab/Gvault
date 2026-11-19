@@ -172,7 +172,7 @@ func cmdSnapshot(base string) {
 			}
 			body["inferenceProbe"] = map[string]any{"protocol": protocol, "model": model, "port": port, "timeoutSeconds": timeout}
 		}
-		// Optional hardware overrides for preflight (FakeProvider defaults to snapshot metadata).
+		// Optional hardware overrides for preflight (otherwise taken from snapshot metadata).
 		if g := env("GVAULT_GPU", ""); g != "" {
 			body["gpuProduct"] = g
 		}

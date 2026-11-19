@@ -20,7 +20,7 @@ type CaptureBody struct {
 	Source    SourceBody        `json:"source" binding:"required"`
 	Provider  string            `json:"provider"`
 	Labels    map[string]string `json:"labels"`
-	// Optional hardware hints for FakeProvider demos.
+	// Optional hardware hints when the provider has not discovered them yet.
 	ImageDigest   string `json:"imageDigest"`
 	GPUProduct    string `json:"gpuProduct"`
 	DriverVersion string `json:"driverVersion"`
@@ -48,7 +48,7 @@ type RestoreBody struct {
 	ProbeEndpoint  string                 `json:"probeEndpoint"`
 	InferenceProbe *domain.InferenceProbe `json:"inferenceProbe,omitempty"`
 	RestorePodSpec map[string]any         `json:"restorePodSpec,omitempty"`
-	// Optional explicit target facts for preflight; defaults to snapshot metadata in fake demos.
+	// Optional explicit target facts for preflight; omitted fields default from snapshot metadata.
 	GPUProduct    string `json:"gpuProduct"`
 	DriverVersion string `json:"driverVersion"`
 	Architecture  string `json:"architecture"`
@@ -139,7 +139,7 @@ func FromSnapshot(s *domain.Snapshot) SnapshotView {
 		},
 		Container: ContainerView{ImageDigest: s.ImageDigest, SourceContainerName: s.SourceContainerName},
 		Artifact:  s.Artifact, SizeBytes: s.SizeBytes, Labels: s.Labels,
-		CreatedAt: s.CreatedAt, ReadyAt: s.ReadyAt, Simulated: s.Provider == "fake",
+		CreatedAt: s.CreatedAt, ReadyAt: s.ReadyAt, Simulated: false,
 	}
 }
 
@@ -152,6 +152,6 @@ func FromOperation(op *domain.Operation) OperationView {
 		TargetPodName: op.TargetPodName, TargetNodeName: op.TargetNodeName,
 		ErrorCode: op.ErrorCode, ErrorMessage: op.ErrorMessage,
 		CreatedAt: op.CreatedAt, UpdatedAt: op.UpdatedAt, FinishedAt: op.FinishedAt,
-		Simulated: op.Provider != "nvidia-snapshot",
+		Simulated: false,
 	}
 }

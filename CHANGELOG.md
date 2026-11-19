@@ -7,7 +7,7 @@
 - Configurable total restore deadline, retrying application probes, and sanitized inference audit outcomes
 - Pinned Snapshot vLLM `/generate` protocol, validated workload Pod specs, and accurate operation provider/simulation markers
 
-- Product default is `PROVIDER=nvidia-snapshot`; Fake is CI harness only (`ALLOW_TEST_PROVIDER`)
+- Product default is `PROVIDER=nvidia-snapshot` only; FakeProvider package removed (CI uses in-memory kube + NVIDIA adapter)
 - Documented storage model (`docs/storage.md`) and hard stop-limits (`docs/scope.md`); AMD out of scope
 - Live Kubernetes client for NVIDIA; probes; audits; OIDC/namespace authz; kustomize; expanded `gvaultctl`
 - S3/export remains fail-closed until upstream pin verifies export

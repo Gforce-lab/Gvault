@@ -22,18 +22,6 @@ type Prober interface {
 	Check(ctx context.Context, endpoint string) Result
 }
 
-// FakeProber always succeeds after a tiny delay — used with FakeProvider (simulated).
-type FakeProber struct{}
-
-func (FakeProber) Check(ctx context.Context, endpoint string) Result {
-	select {
-	case <-ctx.Done():
-		return Result{Type: "http", OK: false, Message: ctx.Err().Error(), Simulated: true}
-	case <-time.After(5 * time.Millisecond):
-		return Result{Type: "http", OK: true, Message: "fake health probe ok — simulated only", Endpoint: endpoint, Simulated: true}
-	}
-}
-
 // HTTPProber GETs an endpoint and expects 2xx.
 type HTTPProber struct {
 	Client *http.Client

@@ -28,7 +28,7 @@ Please fill every section that applies. Incomplete PRs may be asked to revise be
 
 - [ ] I read [CONTRIBUTING.md](../CONTRIBUTING.md) and [docs/decisions.md](../docs/decisions.md)
 - [ ] Phase 1 stays **NVIDIA-only**; no AMD / multi-vendor product claims ([docs/scope.md](../docs/scope.md))
-- [ ] Default / docs path is `PROVIDER=nvidia-snapshot` (CI harness is not a product provider)
+- [ ] Default / docs path is `PROVIDER=nvidia-snapshot` only (no FakeProvider)
 - [ ] No claim of real GPU `READY` / restore success without live cluster evidence
 - [ ] NVIDIA paths remain fail-closed without a live kube client (prerequisites SKIPPED, not PASSED)
 - [ ] Catalog changes respect [docs/storage.md](../docs/storage.md) (metadata/refs only — no checkpoint bytes)
@@ -45,7 +45,7 @@ Please fill every section that applies. Incomplete PRs may be asked to revise be
 - [ ] `make build`
 - [ ] UI / API smoke (if applicable): `curl -s localhost:8080/api/v1/version`
 - [ ] GPU e2e (`-tags=gpu`) left SKIPPED unless hardware prerequisites are documented
-- [ ] No product docs present a non-NVIDIA harness as a GPU provider
+- [ ] Tests use NVIDIA adapter (in-memory kube allowed); no FakeProvider reintroduced
 
 ### Evidence
 

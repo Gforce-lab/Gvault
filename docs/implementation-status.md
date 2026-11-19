@@ -31,7 +31,7 @@ Project name: **Gvault** · Module: `github.com/gvault/gvault` · Binaries: `gva
 
 - [x] Shared fail-closed engine
 - [x] Restore-pod contract constants for v0.3.0
-- [x] Post-restore inference/health probe (`FakeProber` / `HTTPProber`)
+- [x] Post-restore inference/health probe (`HTTPProber` / inference prober)
 - [x] GPU e2e tagged `gpu` → SKIPPED without hardware
 
 ### Milestone 5 — Management

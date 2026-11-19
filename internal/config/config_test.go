@@ -8,6 +8,45 @@ import (
 	"github.com/gvault/gvault/internal/config"
 )
 
+func TestLoadNVIDIADefaults(t *testing.T) {
+	t.Setenv("PROVIDER", "")
+	t.Setenv("ENABLE_NVIDIA_PROVIDER", "")
+	t.Setenv("DEV_AUTH_BYPASS", "true")
+	t.Setenv("API_KEY", "")
+	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Provider != "nvidia-snapshot" || !cfg.EnableNVIDIAProvider {
+		t.Fatalf("expected nvidia defaults, got provider=%s enable=%v", cfg.Provider, cfg.EnableNVIDIAProvider)
+	}
+}
+
+func TestLoadRejectsNonNVIDIAProviders(t *testing.T) {
+	t.Setenv("DEV_AUTH_BYPASS", "true")
+	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
+	for _, provider := range []string{"fake", "amd", "rocm"} {
+		t.Setenv("PROVIDER", provider)
+		if _, err := config.Load(); err == nil {
+			t.Fatalf("expected rejection for PROVIDER=%s", provider)
+		}
+	}
+}
+
+func TestLoadRequiresAuthWhenNotBypassed(t *testing.T) {
+	t.Setenv("PROVIDER", "nvidia-snapshot")
+	t.Setenv("ENABLE_NVIDIA_PROVIDER", "true")
+	t.Setenv("DEV_AUTH_BYPASS", "false")
+	t.Setenv("API_KEY", "")
+	t.Setenv("OIDC_ISSUER", "")
+	t.Setenv("OIDC_CLIENT_SECRET", "")
+	t.Setenv("RESTORE_TIMEOUT_SECONDS", "300")
+	if _, err := config.Load(); err == nil {
+		t.Fatal("expected auth required error")
+	}
+}
+
 func TestRestoreTimeoutConfiguration(t *testing.T) {
 	t.Setenv("PROVIDER", "nvidia-snapshot")
 	t.Setenv("ENABLE_NVIDIA_PROVIDER", "true")

@@ -47,10 +47,6 @@ func NewSnapshotService(
 	if poll <= 0 {
 		poll = 100 * time.Millisecond
 	}
-	var prober probe.Prober = probe.HTTPProber{}
-	if p.Name() == "fake" {
-		prober = probe.FakeProber{}
-	}
 	return &SnapshotService{
 		db:             db,
 		snaps:          snaps,
@@ -60,7 +56,7 @@ func NewSnapshotService(
 		provider:       p,
 		log:            log,
 		poll:           poll,
-		prober:         prober,
+		prober:         probe.HTTPProber{},
 		restoreTimeout: 5 * time.Minute,
 		capRefs:        map[string]provider.ProviderRef{},
 		restRefs:       map[string]provider.ProviderRef{},
@@ -87,7 +83,7 @@ func (s *SnapshotService) WithNamespacePolicy(p *authz.NamespacePolicy) *Snapsho
 	return s
 }
 
-// WithProber sets the post-restore readiness checker (FakeProber default for FakeProvider).
+// WithProber sets the post-restore readiness checker (HTTPProber by default).
 func (s *SnapshotService) WithProber(p probe.Prober) *SnapshotService {
 	if p != nil {
 		s.prober = p
@@ -278,7 +274,7 @@ func (s *SnapshotService) runCapture(opID, snapID string, req domain.CaptureRequ
 				s.metrics.IncOperation(s.provider.Name(), "capture_succeeded")
 				s.metrics.ObserveCaptureSeconds(time.Since(snap.CreatedAt).Seconds())
 			}
-			s.log.Info("capture ready", "snapshotId", snapID, "operationId", opID, "provider", s.provider.Name(), "simulated", s.provider.Name() == "fake")
+			s.log.Info("capture ready", "snapshotId", snapID, "operationId", opID, "provider", s.provider.Name())
 			return
 		}
 		if st.Phase == domain.SnapshotFailed {

@@ -6,19 +6,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
-	"log/slog"
-
 	"github.com/gvault/gvault/internal/api"
 	"github.com/gvault/gvault/internal/api/handlers"
 	"github.com/gvault/gvault/internal/config"
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/provider/fake"
+	"github.com/gvault/gvault/internal/kube"
+	"github.com/gvault/gvault/internal/provider/nvidia"
 	"github.com/gvault/gvault/internal/repository/postgres"
 	"github.com/gvault/gvault/internal/service"
 )
@@ -38,17 +38,20 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	p, _ := nvidia.NewWithMemoryCluster()
 	cfg := config.Config{
-		HTTPAddr: ":0", DevAuthBypass: true, Provider: "fake", AllowTestProvider: true,
-		FakeProviderStep: 30 * time.Millisecond, PollInterval: 20 * time.Millisecond,
+		HTTPAddr: ":0", DevAuthBypass: true, Provider: "nvidia-snapshot",
+		EnableNVIDIAProvider: true, PollInterval: 20 * time.Millisecond,
 	}
-	fp := fake.New(cfg.FakeProviderStep)
-	svc := service.NewSnapshotService(db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db), fp, slog.Default(), cfg.PollInterval)
-	h := &handlers.API{DB: db, Svc: svc, Provider: fp}
+	svc := service.NewSnapshotService(db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db), p, slog.Default(), cfg.PollInterval)
+	h := &handlers.API{DB: db, Svc: svc, Provider: p}
 	r := api.NewRouter(cfg, slog.Default(), h)
 
 	runID := domain.NewID("itest")
-	body, _ := json.Marshal(map[string]any{"name": runID, "clusterId": runID, "namespace": "ns1", "source": map[string]string{"podName": "p1", "containerName": "main"}, "provider": "fake"})
+	body, _ := json.Marshal(map[string]any{
+		"name": runID, "clusterId": runID, "namespace": "ns1", "provider": "nvidia-snapshot",
+		"source": map[string]string{"podName": "p1", "containerName": "main"},
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", runID+"-capture")
@@ -62,7 +65,6 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 	snapID := accepted["snapshotId"]
 	opID := accepted["operationId"]
 
-	// Idempotent replay
 	w2 := httptest.NewRecorder()
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader(body))
 	req2.Header.Set("Content-Type", "application/json")
@@ -76,23 +78,17 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		w3 := httptest.NewRecorder()
-		r.ServeHTTP(w3, httptest.NewRequest(http.MethodGet, "/api/v1/operations/"+opID, nil))
-		var op map[string]any
-		_ = json.Unmarshal(w3.Body.Bytes(), &op)
-		if op["provider"] != "fake" || op["simulated"] != true {
-			t.Fatalf("fake operation must retain its provenance: %v", op)
+		op, err := svc.GetOperation(ctx, opID)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if op["status"] == "SUCCEEDED" {
+		if op.Status == domain.OperationSucceeded {
 			break
 		}
-		if op["status"] == "FAILED" {
-			t.Fatalf("capture failed: %v", op)
+		if op.Status == domain.OperationFailed || time.Now().After(deadline) {
+			t.Fatalf("capture did not succeed: %+v", op)
 		}
-		if time.Now().After(deadline) {
-			t.Fatalf("timeout waiting for capture: %v", op)
-		}
-		time.Sleep(30 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	w4 := httptest.NewRecorder()
@@ -101,7 +97,15 @@ func TestCaptureRestoreIdempotency(t *testing.T) {
 		t.Fatal(w4.Body.String())
 	}
 
-	restBody, _ := json.Marshal(map[string]string{"targetClusterId": runID, "namespace": "ns1", "podName": "restored-1"})
+	restBody, _ := json.Marshal(map[string]any{
+		"targetClusterId": runID, "namespace": "ns1", "podName": "restored-1",
+		"restorePodSpec": map[string]any{
+			"containers": []any{map[string]any{
+				"name": "main", "image": "example/vllm@" + kube.TestDigest,
+				"resources": map[string]any{"limits": map[string]any{"nvidia.com/gpu": "1"}},
+			}},
+		},
+	})
 	wr := httptest.NewRecorder()
 	rreq := httptest.NewRequest(http.MethodPost, "/api/v1/snapshots/"+snapID+"/restore", bytes.NewReader(restBody))
 	rreq.Header.Set("Content-Type", "application/json")
@@ -141,10 +145,10 @@ func TestBadInput(t *testing.T) {
 	}
 	defer db.Close()
 	_ = postgres.MigrateUp(context.Background(), db, "../../db/migrations")
-	cfg := config.Config{DevAuthBypass: true, Provider: "fake"}
-	fp := fake.New(time.Millisecond)
-	svc := service.NewSnapshotService(db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db), fp, slog.Default(), time.Millisecond)
-	h := &handlers.API{DB: db, Svc: svc, Provider: fp}
+	p, _ := nvidia.NewWithMemoryCluster()
+	cfg := config.Config{DevAuthBypass: true, Provider: "nvidia-snapshot", EnableNVIDIAProvider: true}
+	svc := service.NewSnapshotService(db, postgres.NewSnapshotRepo(db), postgres.NewOperationRepo(db), postgres.NewAuditRepo(db), p, slog.Default(), time.Millisecond)
+	h := &handlers.API{DB: db, Svc: svc, Provider: p}
 	r := api.NewRouter(cfg, slog.Default(), h)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/snapshots", bytes.NewReader([]byte(`{}`))))

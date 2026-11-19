@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gvault/gvault/internal/domain"
-	"github.com/gvault/gvault/internal/probe"
 	"github.com/gvault/gvault/internal/provider"
 )
 
@@ -136,19 +135,6 @@ func TestRestoreHealthFailureTimesOutAndRetries(t *testing.T) {
 	result, err := testRestoreService(p).awaitRestore(ctx, provider.ProviderRef{}, domain.RestoreRequest{ProbeEndpoint: srv.URL})
 	if result == nil || result.OK || calls.Load() < 2 {
 		t.Fatalf("result=%+v calls=%d", result, calls.Load())
-	}
-	assertErrorCode(t, err, domain.CodeProbeFailed)
-}
-
-func TestRestoreCannotUseSimulatedProbeOnLiveProvider(t *testing.T) {
-	p := restoreObserver{observe: func(context.Context) (provider.RestoreState, error) {
-		return provider.RestoreState{Phase: domain.OperationSucceeded}, nil
-	}}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	result, err := testRestoreService(p).WithProber(probe.FakeProber{}).awaitRestore(ctx, provider.ProviderRef{}, domain.RestoreRequest{ProbeEndpoint: "http://fake/health"})
-	if result == nil || result.OK {
-		t.Fatalf("result=%+v", result)
 	}
 	assertErrorCode(t, err, domain.CodeProbeFailed)
 }

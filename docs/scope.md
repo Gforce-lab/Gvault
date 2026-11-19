@@ -46,12 +46,10 @@ Then — and only then — design **AMD** (or other) as a second `CheckpointProv
 - No AMD fields, drivers, or ROCm assumptions in the NVIDIA adapter.
 - When started: new package `internal/provider/amd/…`, separate pin, separate compatibility matrix — do not overload the NVIDIA adapter.
 
-## Test harness (not a product provider)
+## CI without a physical GPU
 
-Unit/integration tests may use an in-process harness under `internal/provider/fake` so CI stays GPU-free. That harness:
+Tests use the **nvidia-snapshot** provider with an in-memory Kubernetes API (`kube.MemoryAPI` / `nvidia.NewWithMemoryCluster`). That is still the NVIDIA adapter — there is no separate fake product provider.
 
-- is **not** a supported deployment provider
-- must not appear as the default product path
-- must not be described as “GPU snapshotting” in user docs
+Physical GPU e2e remains `make test-gpu` and stays SKIPPED until hardware prerequisites exist.
 
-Product `PROVIDER` default is **`nvidia-snapshot`**.
+Product `PROVIDER` default is **`nvidia-snapshot`** only.

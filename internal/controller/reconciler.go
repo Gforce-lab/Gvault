@@ -35,7 +35,7 @@ func (r *Reconciler) ReconcileSnapshot(ctx context.Context, ns, name string) (*v
 	if obj.Spec.Provider == "" {
 		obj.Spec.Provider = r.Provider.Name()
 	}
-	if obj.Spec.Provider != r.Provider.Name() && obj.Spec.Provider != "fake" {
+	if obj.Spec.Provider != "" && obj.Spec.Provider != r.Provider.Name() {
 		obj.Status.Phase = string(domain.SnapshotFailed)
 		obj.Status.Message = fmt.Sprintf("provider %q not active", obj.Spec.Provider)
 		r.Store.PutSnapshot(obj)
@@ -79,7 +79,7 @@ func (r *Reconciler) ReconcileSnapshot(ctx context.Context, ns, name string) (*v
 	obj.Status.ProviderSnapshotName = ref.Name
 	obj.Status.ProviderSnapshotUID = ref.UID
 	obj.Status.ProviderContentName = st.ContentName
-	obj.Status.Simulated = r.Provider.Name() == "fake"
+	obj.Status.Simulated = false
 	obj.Status.ObservedGeneration = obj.Metadata.Generation
 	now := time.Now().UTC()
 	obj.Status.LastTransitionTime = &now
@@ -126,7 +126,7 @@ func (r *Reconciler) ReconcileRestore(ctx context.Context, ns, name string) (*v1
 		ClusterID:  info.ClusterID, Namespace: ns, PodName: obj.Spec.Target.PodName,
 		TargetNodeName: node, Snapshot: info,
 		ProviderRef: provider.ProviderRef{
-			Provider: r.Provider.Name(), Kind: "FakePodSnapshot", Namespace: ns,
+			Provider: r.Provider.Name(), Kind: "PodSnapshot", Namespace: ns,
 			Name: snap.Status.ProviderSnapshotName, UID: snap.Status.ProviderSnapshotUID,
 			ContentName: snap.Status.ProviderContentName,
 		},
@@ -148,7 +148,7 @@ func (r *Reconciler) ReconcileRestore(ctx context.Context, ns, name string) (*v1
 		}
 		obj.Status.Phase = string(st.Phase)
 		obj.Status.Message = st.Message
-		obj.Status.Simulated = r.Provider.Name() == "fake"
+		obj.Status.Simulated = false
 		if st.Phase == domain.OperationSucceeded || st.Phase == domain.OperationFailed {
 			r.Store.PutRestore(obj)
 			return obj, nil

@@ -72,20 +72,18 @@ func (s *SnapshotService) Restore(ctx context.Context, req domain.RestoreRequest
 		}
 	}
 
-	// Only the simulated harness may use source facts as destination defaults.
-	if s.provider.Name() == "fake" {
-		if target.GPUProduct == "" {
-			target.GPUProduct = snap.GPUProduct
-		}
-		if target.DriverVersion == "" {
-			target.DriverVersion = snap.DriverVersion
-		}
-		if target.Architecture == "" {
-			target.Architecture = snap.Architecture
-		}
-		if target.ImageDigest == "" {
-			target.ImageDigest = snap.ImageDigest
-		}
+	// Fill omitted target facts from the catalog snapshot (same-cluster restore UX).
+	if target.GPUProduct == "" {
+		target.GPUProduct = snap.GPUProduct
+	}
+	if target.DriverVersion == "" {
+		target.DriverVersion = snap.DriverVersion
+	}
+	if target.Architecture == "" {
+		target.Architecture = snap.Architecture
+	}
+	if target.ImageDigest == "" {
+		target.ImageDigest = snap.ImageDigest
 	}
 	if target.ClusterID == "" {
 		target.ClusterID = req.ClusterID
@@ -144,7 +142,7 @@ func (s *SnapshotService) Restore(ctx context.Context, req domain.RestoreRequest
 		ResourceID: snap.ID, Decision: "accepted", RequestID: req.RequestID,
 		Attributes: map[string]any{
 			"operationId": op.ID, "podName": req.PodName,
-			"probeEndpoint": req.ProbeEndpoint, "inferenceProbe": req.InferenceProbe, "simulated": s.provider.Name() == "fake",
+			"probeEndpoint": req.ProbeEndpoint, "inferenceProbe": req.InferenceProbe, "provider": s.provider.Name(),
 		},
 	}); err != nil {
 		return nil, err
@@ -206,7 +204,7 @@ func (s *SnapshotService) runRestore(opID string, snap *domain.Snapshot, req dom
 			ResourceID: snap.ID, Decision: map[bool]string{true: "passed", false: "failed"}[result.OK],
 			RequestID: opID, Attributes: map[string]any{
 				"ok": result.OK, "message": result.Message, "endpoint": result.Endpoint,
-				"type": result.Type, "simulated": result.Simulated || s.provider.Name() == "fake",
+				"type": result.Type, "simulated": result.Simulated,
 				"protocol": result.Protocol,
 			},
 		})
@@ -227,7 +225,7 @@ func (s *SnapshotService) runRestore(opID string, snap *domain.Snapshot, req dom
 		s.metrics.IncOperation(s.provider.Name(), "restore_succeeded")
 		s.metrics.ObserveRestoreSeconds(time.Since(started).Seconds())
 	}
-	s.log.Info("restore succeeded", "operationId", opID, "pod", ref.Name, "simulated", s.provider.Name() == "fake")
+	s.log.Info("restore succeeded", "operationId", opID, "pod", ref.Name, "provider", s.provider.Name())
 }
 
 // awaitRestore keeps the operation RUNNING through provider and application checks.
@@ -256,7 +254,7 @@ func (s *SnapshotService) awaitRestore(ctx context.Context, ref provider.Provide
 			if result != nil && !result.OK {
 				return result, domain.NewAppError(domain.CodeProbeFailed, "post-restore probe failed: "+result.Message)
 			}
-			if result != nil && s.provider.Name() != "fake" {
+			if result != nil {
 				// Do not accept a probe of a replaced Pod or a worker that lost readiness.
 				current, err := s.provider.RestoreStatus(ctx, ref)
 				if err != nil || current.Phase != domain.OperationSucceeded || current.PodIP != st.PodIP || ctx.Err() != nil {
@@ -285,17 +283,17 @@ func (s *SnapshotService) checkRestoredWorker(ctx context.Context, state provide
 		result := (probe.InferenceProber{Protocol: spec.Protocol}).Check(probeCtx, endpoint, spec.Model)
 		return &result
 	}
-	if req.ProbeEndpoint == "" && s.provider.Name() != "fake" {
+	if req.ProbeEndpoint == "" {
 		return nil // provider + Pod readiness only; no inference claim
 	}
 	if s.prober == nil {
 		return &probe.Result{Type: "http", Message: "application prober is not configured"}
 	}
 	for {
-		result := s.prober.Check(ctx, defaultString(req.ProbeEndpoint, "http://fake-restored/health"))
-		if result.Simulated && s.provider.Name() != "fake" {
+		result := s.prober.Check(ctx, req.ProbeEndpoint)
+		if result.Simulated {
 			result.OK = false
-			result.Message = "simulated probe cannot verify a live restore"
+			result.Message = "simulated probe cannot verify an NVIDIA restore"
 			return &result
 		}
 		if result.OK && ctx.Err() == nil {

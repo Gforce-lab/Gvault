@@ -4,16 +4,20 @@ on:
   push:
     branches: [main, master, develop]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main, master, develop]
+  merge_group:
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # Primary MR gate — must stay green for merge.
   test:
     name: test
     runs-on: ubuntu-latest
@@ -36,9 +40,8 @@ jobs:
       DEV_AUTH_BYPASS: "true"
       PROVIDER: nvidia-snapshot
       ENABLE_NVIDIA_PROVIDER: "true"
-      # Integration tests construct the in-process harness directly; not a product path.
-      ALLOW_TEST_PROVIDER: "true"
       PRODUCT_NAME: Gvault
+      RESTORE_TIMEOUT_SECONDS: "300"
 
     steps:
       - name: Checkout
@@ -55,14 +58,26 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
+      - name: Format check
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 
-      - name: Unit tests
-        run: go test ./... -count=1 -race
+      - name: Unit tests (race)
+        run: go test ./... -count=1 -race -timeout=10m
 
-      - name: Integration tests
-        run: go test ./tests/integration/... -count=1 -tags=integration
+      - name: Integration tests (Postgres)
+        run: go test ./tests/integration/... -count=1 -tags=integration -timeout=10m
+
+      - name: GPU e2e package compiles (SKIPPED without hardware)
+        run: go test ./tests/e2e/... -count=1 -tags=gpu -timeout=2m
 
       - name: Build binaries
         run: |
@@ -73,11 +88,13 @@ jobs:
           go build -ldflags "$LDFLAGS" -o bin/gvault-controller ./cmd/gvault-controller
           go build -ldflags "$LDFLAGS" -o bin/gvaultctl ./cmd/gvaultctl
           test -x bin/gvault-api && test -x bin/gvaultctl
+          ./bin/gvaultctl version --local
+          ./bin/gvaultctl help >/dev/null
 
       - name: Upload binaries
         uses: actions/upload-artifact@v7
         with:
-          name: gvault-binaries
+          name: gvault-binaries-${{ github.sha }}
           path: bin/
           if-no-files-found: error
 

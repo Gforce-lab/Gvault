@@ -5,7 +5,7 @@
 - Authentication is API-key based, with an optional local `DEV_AUTH_BYPASS`.
 - Do **not** enable `DEV_AUTH_BYPASS` outside trusted local development.
 - OIDC / per-namespace authorization is deferred.
-- FakeProvider does not handle real checkpoint artifacts. When NVIDIA integration lands, treat artifacts as sensitive (may contain model weights, secrets, process memory).
+- Checkpoint artifacts on NVIDIA RWX may contain model weights, secrets, or process memory — treat as sensitive; Gvault catalogs metadata/refs only.
 
 ## Reporting
 

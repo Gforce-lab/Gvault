@@ -7,11 +7,9 @@ import (
 	"github.com/gvault/gvault/internal/domain"
 )
 
-func TestOperationSimulationComesFromSnapshotProvider(t *testing.T) {
-	for _, name := range []string{"fake", "nvidia-snapshot", ""} {
-		view := dto.FromOperation(&domain.Operation{Provider: name})
-		if view.Provider != name || view.Simulated != (name != "nvidia-snapshot") {
-			t.Fatalf("provider=%q view=%+v", name, view)
-		}
+func TestFromOperationKeepsProvider(t *testing.T) {
+	view := dto.FromOperation(&domain.Operation{Provider: "nvidia-snapshot", ID: "op1"})
+	if view.Provider != "nvidia-snapshot" || view.Simulated || view.ID != "op1" {
+		t.Fatalf("%+v", view)
 	}
 }

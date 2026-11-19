@@ -11,12 +11,12 @@ import (
 
 // ManagerConfig controls optional leader-aware reconcile loops.
 // Full controller-runtime + envtest remains a post-CI upgrade; this manager
-// keeps the FakeProvider GPU-free path while matching the intended ops shape.
+// matches the intended ops shape over MemoryStore + CheckpointProvider.
 type ManagerConfig struct {
-	LeaderElection     bool
-	LeaderElectionID   string
-	ReconcileInterval  time.Duration
-	EnableLeaderElect  bool // alias clarity for helm values
+	LeaderElection    bool
+	LeaderElectionID  string
+	ReconcileInterval time.Duration
+	EnableLeaderElect bool // alias clarity for helm values
 }
 
 // Manager runs periodic reconciliation against the in-memory CRD store.
@@ -26,9 +26,9 @@ type Manager struct {
 	Log        *slog.Logger
 	Cfg        ManagerConfig
 
-	mu       sync.Mutex
-	leading  bool
-	cancel   context.CancelFunc
+	mu      sync.Mutex
+	leading bool
+	cancel  context.CancelFunc
 }
 
 func NewManager(store *MemoryStore, p provider.CheckpointProvider, log *slog.Logger, cfg ManagerConfig) *Manager {

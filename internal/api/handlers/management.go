@@ -109,7 +109,7 @@ func (a *API) Overview(c *gin.Context) {
 		"channel":          "beta",
 		"phase":            "1-nvidia-only",
 		"provider":         a.Provider.Name(),
-		"simulated":        a.Provider.Name() != "nvidia-snapshot",
+		"simulated":        false,
 		"snapshotCount":    len(snaps),
 		"readyCount":       ready,
 		"recentOperations": len(ops),

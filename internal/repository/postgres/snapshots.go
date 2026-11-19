@@ -184,7 +184,7 @@ func scanSnapshot(row scannable) (*domain.Snapshot, error) {
 		return nil, err
 	}
 	s.Status = domain.SnapshotStatus(status)
-	s.ProviderSnapshotRef.Kind = "FakePodSnapshot"
+	s.ProviderSnapshotRef.Kind = "PodSnapshot"
 	if s.Provider == "nvidia-snapshot" {
 		s.ProviderSnapshotRef.Kind = "PodSnapshot"
 	}

@@ -23,7 +23,7 @@ Mutations return `202` only after the operation row is committed. Poll `GET /api
 | Snapshot | `PENDING → CAPTURING → READY` (or `FAILED` / `DELETING` / `DELETED`) |
 | Restore / delete op | `PENDING → RUNNING → SUCCEEDED` (or `FAILED`) |
 
-All FakeProvider outcomes are **simulated**.
+READY/SUCCEEDED require NVIDIA provider evidence (live cluster or CI in-memory kube exercising the same adapter).
 
 ## Endpoint groups
 

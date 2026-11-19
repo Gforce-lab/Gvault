@@ -304,7 +304,6 @@ Contract: [openapi/openapi.yaml](openapi/openapi.yaml) · [docs/api.md](docs/api
 |---|---|---|
 | `PROVIDER` | `nvidia-snapshot` | Product provider |
 | `ENABLE_NVIDIA_PROVIDER` | `true` | Required for NVIDIA |
-| `ALLOW_TEST_PROVIDER` | unset | CI harness only — not for demos/prod |
 | `KUBECONFIG` | optional | Live cluster access |
 | `ALLOWED_NAMESPACES` | empty | Allowlist when set |
 | `ENABLE_S3_EXPORT` | `false` | Still fail-closed |
@@ -336,7 +335,8 @@ helm install gvault ./config/helm/gvault
 1. Read [docs/scope.md](docs/scope.md) and [docs/storage.md](docs/storage.md)  
 2. Do not add AMD / fake-as-product paths in Phase 1  
 3. Never claim GPU READY without hardware evidence  
-4. `make fmt test build` + [PR template](.github/PULL_REQUEST_TEMPLATE.md)  
+4. Open issues via [issue templates](.github/ISSUE_TEMPLATE/) (see [CONTRIBUTING.md](CONTRIBUTING.md))  
+5. `make fmt test build` + [PR template](.github/PULL_REQUEST_TEMPLATE.md)  
 
 ---
 

@@ -22,10 +22,10 @@
 
 ## ADR-002 — FakeProvider before live NVIDIA
 
-- **Date:** 2026-11-16 (updated 2026-11-17)
-- **Status:** Accepted
-- **Decision:** Default `PROVIDER=fake`. NVIDIA adapter is feature-flagged and fail-closed without a live kube client — never reports physical READY.
-- **Consequences:** Local UI and CI stay GPU-free.
+- **Date:** 2026-11-16 (updated 2026-11-18)
+- **Status:** Superseded by ADR-012
+- **Decision (historical):** Early milestones used a FakeProvider for GPU-free demos.
+- **Superseded by:** NVIDIA-only default; FakeProvider package removed.
 
 ---
 
@@ -87,8 +87,8 @@
 
 - **Date:** 2026-11-18
 - **Status:** Accepted
-- **Decision:** Wire `internal/kube` into `nvidia-snapshot` only. Default `PROVIDER=fake` never talks to the cluster. NVIDIA without a live client stays fail-closed (prerequisites SKIPPED, not PASSED).
-- **Consequences:** FakeProvider CI/UI regressions are impossible from kube wiring; live path unit-tested with `kube.FakeAPI`.
+- **Decision:** Wire `internal/kube` into `nvidia-snapshot` only. NVIDIA without a live client stays fail-closed (prerequisites SKIPPED, not PASSED).
+- **Consequences:** CI uses `kube.MemoryAPI` with the NVIDIA adapter; no separate fake provider.
 
 ---
 
@@ -110,12 +110,12 @@
 
 ---
 
-## ADR-012 — NVIDIA-first; remove Fake as a product concept
+## ADR-012 — NVIDIA-only provider (no Fake product path)
 
-- **Date:** 2026-11-18
+- **Date:** 2026-11-18 (updated)
 - **Status:** Accepted
-- **Decision:** Phase 1 product provider is **`nvidia-snapshot` only**. Default `PROVIDER=nvidia-snapshot`. The in-process `fake` package remains a **CI harness** behind `ALLOW_TEST_PROVIDER=true` and must not be documented as a GPU provider. **AMD is explicitly out of scope** until Phase 1 exit criteria in `docs/scope.md`.
-- **Consequences:** Local demos without kube are dry-run / fail-closed. Catalog storage rules live in `docs/storage.md` (metadata + opaque refs only).
+- **Decision:** Phase 1 supports **`nvidia-snapshot` only**. The former FakeProvider package is removed. CI uses `nvidia.NewWithMemoryCluster()` (in-memory kube) so tests still exercise the NVIDIA adapter without physical GPUs. **AMD is out of scope** until Phase 1 exit criteria in `docs/scope.md`.
+- **Consequences:** `PROVIDER=fake` is rejected by config. Catalog storage rules live in `docs/storage.md`.
 
 ---
 

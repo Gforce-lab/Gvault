@@ -145,6 +145,9 @@ func (p *Provider) CaptureStatus(ctx context.Context, ref provider.ProviderRef) 
 		if drv, ok, _ := unstructured.NestedString(obj.Object, "status", "driverVersion"); ok {
 			state.DriverVersion = drv
 		}
+		if arch, ok, _ := unstructured.NestedString(obj.Object, "status", "architecture"); ok {
+			state.Architecture = arch
+		}
 	case kube.ConditionTrue(obj, "Failed"):
 		state.Phase = domain.SnapshotFailed
 		state.Message = "PodSnapshot Failed"
