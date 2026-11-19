@@ -8,6 +8,21 @@
 6. Record material design choices in `docs/decisions.md`.
 7. Open PRs against a feature branch (not direct `main`). Use [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
 
+## Opening an issue
+
+Use **New issue** on GitHub and pick a template (see [#15](https://github.com/Gforce-lab/Gvault/issues/15)):
+
+| Template | When to use |
+|---|---|
+| Bug report | Something is broken |
+| Feature request | New capability (check Phase 1 fit) |
+| Documentation | Docs / README / OpenAPI fixes |
+| NVIDIA / GPU setup | Real cluster / pin / capture-restore blockers |
+| Question | Architecture or how-to |
+| Security (non-sensitive) | Process/docs only — private vulns go to [SECURITY.md](SECURITY.md) |
+
+Blank issues are disabled. Do not paste tokens, kubeconfigs, or checkpoint payloads.
+
 ## Opening a pull request
 
 ```bash

@@ -335,7 +335,8 @@ helm install gvault ./config/helm/gvault
 1. Read [docs/scope.md](docs/scope.md) and [docs/storage.md](docs/storage.md)  
 2. Do not add AMD / fake-as-product paths in Phase 1  
 3. Never claim GPU READY without hardware evidence  
-4. `make fmt test build` + [PR template](.github/PULL_REQUEST_TEMPLATE.md)  
+4. Open issues via [issue templates](.github/ISSUE_TEMPLATE/) (see [CONTRIBUTING.md](CONTRIBUTING.md))  
+5. `make fmt test build` + [PR template](.github/PULL_REQUEST_TEMPLATE.md)  
 
 ---
 
